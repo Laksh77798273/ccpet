@@ -5,9 +5,9 @@
 ## **1. 模板与框架选择 (Template and Framework Selection)**
 
 经过审阅 PRD 和 UI/UX 规格说明书，我们确认以下几点：
-* **项目类型:** 这是一个全新的 (Greenfield) Claude Code IDE 扩展。
-* **框架/语言:** 根据 PRD 的技术假设，我们将使用 **TypeScript** 作为主要开发语言。由于这是一个定制化的 IDE 扩展，我们将**不使用**标准的 Web 前端框架（如 React, Vue）或现成的启动模板 (starter template)。
-* **项目设置:** 项目的构建、测试和依赖管理将进行手动配置，以确保其极致轻量化并符合 Claude Code 扩展的特定要求。
+* **项目类型:** 这是一个全新的 (Greenfield) Claude Code CLI 状态栏脚本。
+* **框架/语言:** 根据 PRD 的技术假设，我们将使用 **TypeScript** 作为主要开发语言。由于这是一个定制化的 CLI 状态栏脚本，我们将**不使用**标准的 Web 前端框架（如 React, Vue）或现成的启动模板 (starter template)。
+* **项目设置:** 项目的构建、测试和依赖管理将进行手动配置，以确保其极致轻量化并符合 Claude Code CLI 状态栏的特定要求。
 
 #### **变更日志 (Change Log)**
 | 日期 | 版本 | 描述 | 作者 |
@@ -21,7 +21,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | **语言 (Language)** | TypeScript | `~5.x.x` | 主要开发语言 | 提供类型安全和现代语法，提升代码质量与可维护性。 |
 | **运行时 (Runtime)** | Node.js | `~20.x.x` | 开发与构建环境 | 用于运行构建工具和脚本的 LTS (长期支持) 版本。 |
-| **“框架” (“Framework”)** | Claude Code Extension API | `(latest)` | 与 IDE 交互的核心 | 项目的基础，所有功能（如状态栏更新）都基于此 API。 |
+| **"框架" ("Framework")** | Claude Code CLI Status Line API | `(latest)` | 与 CLI 状态栏交互的核心 | 项目的基础，通过命令行输出状态栏显示内容。 |
 | **状态管理 (State Mgmt)** | 原生 TypeScript 类/对象 | `N/A` | 管理应用本地状态 | 性能开销为零，完全满足 MVP 简单的状态管理需求，无需引入外部库。 |
 | **构建工具 (Build Tool)** | esbuild | `~0.2x.x` | 打包和编译 TypeScript | 极速的构建性能，零配置开箱即用，非常适合小型扩展项目。 |
 | **测试框架 (Testing)** | Vitest | `~1.x.x` | 单元与集成测试 | 现代、快速的测试运行器，与 esbuild 兼容性好，API 简洁。 |
@@ -30,31 +30,36 @@
 ## **3. 项目结构 (Project Structure)**
 
 ```plaintext
-status-pet-extension/
-├── .vscode/               # VS Code 设置 (用于扩展调试)
-├── dist/                  # 编译后的扩展输出目录
+ccpet/
+├── dist/                  # 编译后的 CLI 脚本输出目录
+│   └── extension.js       # 可执行的 CLI 状态栏脚本
 ├── src/                   # 源代码目录
 │   ├── core/              # 核心业务逻辑
 │   │   ├── Pet.ts         # 宠物状态和能量条的核心类/模块
 │   │   ├── config.ts      # 应用配置常量
 │   │   └── __tests__/
 │   │       └── Pet.test.ts
-│   ├── services/          # 与外部API交互的服务
-│   │   └── ClaudeCodeService.ts
+│   ├── services/          # 与外部系统交互的服务
+│   │   ├── PetStorage.ts  # 本地状态持久化服务
+│   │   └── __tests__/
+│   │       └── PetStorage.test.ts
 │   ├── ui/                # UI 相关代码
-│   │   ├── StatusBar.ts   # 封装所有与状态栏 API 的交互
+│   │   ├── StatusBar.ts   # 状态栏显示格式化器 (StatusBarFormatter)
 │   │   └── __tests__/
 │   │       └── StatusBar.test.ts
-│   ├── utils/             # 通用工具函数
-│   │   └── time.ts        # 时间处理函数
-│   └── extension.ts       # 扩展的主入口文件
+│   ├── __tests__/         # 集成测试
+│   │   ├── extension.test.ts
+│   │   ├── integration/
+│   │   └── setup.ts
+│   └── extension.ts       # CLI 脚本的主入口文件
+├── docs/                  # 项目文档
 ├── .gitignore
 ├── .prettierrc.json       # Prettier 配置文件
 ├── esbuild.config.js      # esbuild 配置文件
 ├── package.json           # 项目依赖与脚本
 ├── tsconfig.json          # TypeScript 配置文件
 └── vitest.config.ts       # Vitest 配置文件
-````
+```
 
 ## **4. 组件标准 (Component Standards)**
 
@@ -142,28 +147,48 @@ export class Pet {
 }
 ```
 
-## **6. API 集成 (API Integration)**
+## **6. CLI 集成 (CLI Integration)**
 
-#### **API 客户端配置 (API Client Configuration)**
+#### **CLI 执行模式 (CLI Execution Mode)**
 
-我们的“API 客户端”将是一个 `src/services/ClaudeCodeService.ts` 模块，作为我们应用与 Claude Code API 之间的**适配器 (Adapter)**。
+我们的应用是一个独立的 CLI 脚本，通过 Claude Code 的状态栏配置调用。脚本执行时输出格式化的宠物状态信息，并管理本地状态持久化。
 
-#### **服务模板 (Service Template)**
+#### **主要组件模板 (Main Components Template)**
 
 ```typescript
-import * as claude from 'claude-code-api';
+// CLI 主入口类
+export class ClaudeCodeStatusLine {
+  private pet: Pet;
+  private formatter: StatusBarFormatter;
+  private storage: PetStorage;
 
-export interface IClaudeCodeService {
-  updateStatusBar(text: string): void;
-  registerCommand(commandId: string, callback: () => void): void;
-  onDidCountTokens(callback: (tokens: number) => void): () => void;
-  getState(): Promise<string | undefined>;
-  saveState(state: string): Promise<void>;
+  constructor() {
+    this.storage = new PetStorage();
+    this.formatter = new StatusBarFormatter();
+    // 加载或创建初始宠物状态
+    const savedState = this.storage.loadState();
+    this.pet = new Pet(savedState || initialState, { config: PET_CONFIG });
+    if (savedState) {
+      this.pet.applyTimeDecay(); // 应用时间衰减
+    }
+  }
+
+  public getStatusDisplay(): string {
+    const state = this.pet.getState();
+    return this.formatter.formatPetDisplay(state);
+  }
+
+  public saveState(): void {
+    this.storage.saveState(this.pet.getState());
+  }
 }
 
-export class ClaudeCodeService implements IClaudeCodeService {
-  private statusBarItem: claude.StatusBarItem;
-  // ... implementation ...
+// 存储服务接口
+export class PetStorage {
+  private stateFilePath: string;
+
+  public loadState(): IPetState | null;
+  public saveState(state: IPetState): void;
 }
 ```
 
@@ -1357,25 +1382,28 @@ afterAll(() => {
 所有依赖项必须使用精确版本号，避免自动更新带来的不兼容风险：
 
 ```json
-// package.json - 生产依赖
+// package.json - CLI 脚本依赖
 {
-  "name": "status-pet-extension",
+  "name": "claude-code-status-pet",
   "version": "1.0.0",
-  "dependencies": {
-    "claude-code-api": "1.2.3",
-    "@types/node": "20.10.5"
+  "description": "A Claude Code status line script that displays a virtual pet",
+  "main": "dist/extension.js",
+  "bin": {
+    "claude-pet": "dist/extension.js"
   },
   "devDependencies": {
-    "@types/vscode": "1.85.0",
+    "@types/node": "20.10.5",
     "esbuild": "0.20.2",
-    "vitest": "1.2.1",
+    "vitest": "^3.2.4",
+    "@vitest/coverage-v8": "^3.2.4",
     "prettier": "3.1.1",
     "typescript": "5.3.3"
   },
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=9.0.0"
-  }
+  },
+  "keywords": ["claude-code", "status-line", "pet", "cli"]
 }
 ```
 
@@ -1711,7 +1739,7 @@ on:
 
 env:
   NODE_VERSION: '20'
-  EXTENSION_NAME: 'status-pet-extension'
+  CLI_SCRIPT_NAME: 'claude-code-status-pet'
 
 jobs:
   test:

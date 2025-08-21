@@ -1,0 +1,13 @@
+export const PET_CONFIG = {
+  INITIAL_ENERGY: 100,
+  HAPPY_EXPRESSION_THRESHOLD: 80,
+  HAPPY_EXPRESSION: '(^_^)',
+  ENERGY_BAR_LENGTH: 10,
+  STATUS_BAR_PRIORITY: 100,
+  FILLED_BAR_CHAR: '█',
+  EMPTY_BAR_CHAR: '░'
+} as const;
+
+export const LOGGER_CONFIG = {
+  COMPONENT_NAME: 'StatusPetExtension'
+} as const;

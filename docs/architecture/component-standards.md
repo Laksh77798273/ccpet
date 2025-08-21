@@ -101,63 +101,68 @@ export class Pet {
 }
 ```
 
-## Service Template
+## Storage Service Template
 
-Services that interact with external APIs should follow this adapter pattern:
+Services that handle persistence should follow this filesystem-based pattern:
 
 ```typescript
-// src/services/ClaudeCodeService.ts
-import * as claude from 'claude-code-api';
+// src/services/PetStorage.ts
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import { IPetState } from '../core/Pet';
 
-export interface IClaudeCodeService {
-  updateStatusBar(text: string): void;
-  registerCommand(commandId: string, callback: () => void): void;
-  onDidCountTokens(callback: (tokens: number) => void): () => void;
-  getState(): Promise<string | undefined>;
-  saveState(state: string): Promise<void>;
-}
+export class PetStorage {
+  private stateFilePath: string;
 
-export class ClaudeCodeService implements IClaudeCodeService {
-  private statusBarItem: claude.StatusBarItem;
-  
   constructor() {
-    this.statusBarItem = claude.window.createStatusBarItem(
-      claude.StatusBarAlignment.Right, 
-      100
-    );
-    this.statusBarItem.show();
+    // Store pet state in user's home directory under .claude-pet
+    const homeDir = os.homedir();
+    const petDir = path.join(homeDir, '.claude-pet');
+    this.stateFilePath = path.join(petDir, 'pet-state.json');
+    
+    // Ensure directory exists
+    this.ensureDirectoryExists(petDir);
   }
 
-  public updateStatusBar(text: string): void {
-    this.statusBarItem.text = text;
+  public loadState(): IPetState | null {
+    try {
+      if (!fs.existsSync(this.stateFilePath)) {
+        return null;
+      }
+
+      const data = fs.readFileSync(this.stateFilePath, 'utf8');
+      const parsed = JSON.parse(data);
+      
+      // Convert lastFeedTime back to Date object
+      if (parsed.lastFeedTime) {
+        parsed.lastFeedTime = new Date(parsed.lastFeedTime);
+      }
+      
+      return parsed as IPetState;
+    } catch (error) {
+      console.error('Failed to load pet state:', error);
+      return null;
+    }
   }
 
-  public registerCommand(commandId: string, callback: () => void): void {
-    claude.commands.registerCommand(commandId, callback);
+  public saveState(state: IPetState): void {
+    try {
+      const data = JSON.stringify(state, null, 2);
+      fs.writeFileSync(this.stateFilePath, data, 'utf8');
+    } catch (error) {
+      console.error('Failed to save pet state:', error);
+    }
   }
 
-  public onDidCountTokens(callback: (tokens: number) => void): () => void {
-    // Implementation for token counting events
-    return claude.workspace.onDidChangeTextDocument((event) => {
-      // Calculate tokens from document changes
-      const tokens = this._calculateTokens(event);
-      callback(tokens);
-    });
-  }
-
-  public async getState(): Promise<string | undefined> {
-    return claude.workspace.getConfiguration('statusPet').get('state');
-  }
-
-  public async saveState(state: string): Promise<void> {
-    await claude.workspace.getConfiguration('statusPet').update('state', state);
-  }
-
-  private _calculateTokens(event: any): number {
-    // Token calculation logic
-    return event.contentChanges.reduce((total: number, change: any) => {
-      return total + Math.ceil(change.text.length / 4); // Rough token estimate
-    }, 0);
+  private ensureDirectoryExists(dirPath: string): void {
+    try {
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
+    } catch (error) {
+      console.error('Failed to create pet storage directory:', error);
+    }
   }
 }
 ```
@@ -252,6 +257,55 @@ describe('Pet Core Logic', () => {
     });
   });
 });
+
+// src/services/__tests__/PetStorage.test.ts
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { PetStorage } from '../PetStorage';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+
+// Mock filesystem and os modules
+vi.mock('fs');
+vi.mock('os');
+vi.mock('path');
+
+describe('PetStorage Service', () => {
+  const mockHomedir = '/mock/home';
+  const mockStateFile = '/mock/home/.claude-pet/pet-state.json';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(os.homedir).mockReturnValue(mockHomedir);
+    vi.mocked(path.join).mockImplementation((...args) => args.join('/'));
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readFileSync).mockReturnValue('{}');
+    vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
+  });
+
+  it('should save state to filesystem', () => {
+    const storage = new PetStorage();
+    const mockState = { energy: 75, expression: '(^_^)' };
+    
+    storage.saveState(mockState);
+    
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      mockStateFile,
+      JSON.stringify(mockState, null, 2),
+      'utf8'
+    );
+  });
+
+  it('should load state from filesystem', () => {
+    const mockState = { energy: 50, expression: '(o_o)' };
+    vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(mockState));
+    
+    const storage = new PetStorage();
+    const result = storage.loadState();
+    
+    expect(result).toEqual(mockState);
+  });
+});
 ```
 
 ## Design Patterns
@@ -269,20 +323,34 @@ private _notify(): void {
   this.observers.forEach(observer => observer(this.getState()));
 }
 
-// Observer (StatusBar.ts)
-constructor(claudeService: IClaudeCodeService) {
-  this.claudeService = claudeService;
-  pet.subscribe((state) => this.updateDisplay(state));
+// Observer (StatusBarFormatter.ts)
+constructor() {
+  // No external dependencies needed for CLI formatter
 }
+
+// Usage in CLI main class
+const formatter = new StatusBarFormatter();
+pet.subscribe((state) => {
+  const display = formatter.formatPetDisplay(state);
+  process.stdout.write(display);
+});
 ```
 
 ### Adapter Pattern
-Used to isolate Claude Code API specifics:
+Used to isolate external dependencies and platform specifics:
 
 ```typescript
-// Adapter shields core logic from platform changes
-export class ClaudeCodeService implements IClaudeCodeService {
-  // Adapts Claude Code API to our internal interface
+// PetStorage adapts filesystem operations to our internal interface
+export class PetStorage {
+  // Adapts Node.js filesystem API to our state management needs
+  public loadState(): IPetState | null { /* ... */ }
+  public saveState(state: IPetState): void { /* ... */ }
+}
+
+// StatusBarFormatter adapts pet state to CLI output format
+export class StatusBarFormatter {
+  // Adapts internal pet state to CLI display format
+  public formatPetDisplay(state: IPetState): string { /* ... */ }
 }
 ```
 

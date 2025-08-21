@@ -1,336 +1,254 @@
-# API Integration
+# CLI Integration
 
-## API Client Configuration
+## CLI Execution Model
 
-Our "API client" is the `src/services/ClaudeCodeService.ts` module, which serves as an **Adapter** between our application and the Claude Code API.
+Our application is a standalone CLI script that integrates with Claude Code through its status line configuration system. Instead of using extension APIs, we implement filesystem-based persistence and command-line output.
 
-## Service Template
+## Storage Service Template
 
 ```typescript
-import * as claude from 'claude-code-api';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import { IPetState } from '../core/Pet';
 
-export interface IClaudeCodeService {
-  updateStatusBar(text: string): void;
-  registerCommand(commandId: string, callback: () => void): void;
-  onDidCountTokens(callback: (tokens: number) => void): () => void;
-  getState(): Promise<string | undefined>;
-  saveState(state: string): Promise<void>;
-}
-
-export class ClaudeCodeService implements IClaudeCodeService {
-  private statusBarItem: claude.StatusBarItem;
-  private disposables: claude.Disposable[] = [];
+export class PetStorage {
+  private stateFilePath: string;
 
   constructor() {
-    this.statusBarItem = claude.window.createStatusBarItem(
-      claude.StatusBarAlignment.Right,
-      100
-    );
-    this.statusBarItem.show();
+    // Store pet state in user's home directory under .claude-pet
+    const homeDir = os.homedir();
+    const petDir = path.join(homeDir, '.claude-pet');
+    this.stateFilePath = path.join(petDir, 'pet-state.json');
+    
+    // Ensure directory exists
+    this.ensureDirectoryExists(petDir);
   }
 
-  public updateStatusBar(text: string): void {
-    this.statusBarItem.text = text;
-  }
-
-  public registerCommand(commandId: string, callback: () => void): void {
-    const disposable = claude.commands.registerCommand(commandId, callback);
-    this.disposables.push(disposable);
-  }
-
-  public onDidCountTokens(callback: (tokens: number) => void): () => void {
-    const disposable = claude.workspace.onDidChangeTextDocument((event) => {
-      const tokens = this._calculateTokensFromEvent(event);
-      if (tokens > 0) {
-        callback(tokens);
+  public loadState(): IPetState | null {
+    try {
+      if (!fs.existsSync(this.stateFilePath)) {
+        return null;
       }
-    });
-    
-    this.disposables.push(disposable);
-    
-    return () => disposable.dispose();
-  }
 
-  public async getState(): Promise<string | undefined> {
-    return await claude.workspace.getConfiguration('statusPet').get('persistedState');
-  }
-
-  public async saveState(state: string): Promise<void> {
-    await claude.workspace.getConfiguration('statusPet').update('persistedState', state, true);
-  }
-
-  public dispose(): void {
-    this.statusBarItem.dispose();
-    this.disposables.forEach(d => d.dispose());
-    this.disposables = [];
-  }
-
-  private _calculateTokensFromEvent(event: claude.TextDocumentChangeEvent): number {
-    return event.contentChanges.reduce((total, change) => {
-      // Rough token estimation: ~4 characters per token
-      const textLength = change.text.length;
-      const tokenCount = Math.ceil(textLength / 4);
-      return total + tokenCount;
-    }, 0);
-  }
-}
-```
-
-## Error Handling for API Integration
-
-The service implements comprehensive error handling and retry logic:
-
-```typescript
-export class ClaudeCodeService implements IClaudeCodeService {
-  private circuitBreaker = new CircuitBreaker();
-  
-  public updateStatusBar(text: string): void {
-    try {
-      this.circuitBreaker.execute(async () => {
-        this.statusBarItem.text = text;
-      });
+      const data = fs.readFileSync(this.stateFilePath, 'utf8');
+      const parsed = JSON.parse(data);
+      
+      // Convert lastFeedTime back to Date object
+      if (parsed.lastFeedTime) {
+        parsed.lastFeedTime = new Date(parsed.lastFeedTime);
+      }
+      
+      return parsed as IPetState;
     } catch (error) {
-      Logger.getInstance().error('claude-service', 'Failed to update status bar', { error });
-      // Fail silently - don't crash the extension
+      console.error('Failed to load pet state:', error);
+      return null;
     }
   }
 
-  public async saveState(state: string): Promise<void> {
-    return withRetry(async () => {
-      await claude.workspace.getConfiguration('statusPet').update('persistedState', state, true);
-    }, 3, 1000);
+  public saveState(state: IPetState): void {
+    try {
+      const data = JSON.stringify(state, null, 2);
+      fs.writeFileSync(this.stateFilePath, data, 'utf8');
+    } catch (error) {
+      console.error('Failed to save pet state:', error);
+    }
   }
 
-  private async _calculateTokensFromEvent(event: claude.TextDocumentChangeEvent): Promise<number> {
+  private ensureDirectoryExists(dirPath: string): void {
     try {
-      return event.contentChanges.reduce((total, change) => {
-        const textLength = change.text.length;
-        const tokenCount = Math.ceil(textLength / 4);
-        return total + tokenCount;
-      }, 0);
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
     } catch (error) {
-      Logger.getInstance().warn('claude-service', 'Token calculation failed', { error });
-      return 0; // Return safe default
+      console.error('Failed to create pet storage directory:', error);
     }
   }
 }
 ```
 
-## Extension Integration
-
-The service integrates with the main extension lifecycle:
+## CLI Main Class Template
 
 ```typescript
-// src/extension.ts
-import * as claude from 'claude-code-api';
 import { Pet, IPetState } from './core/Pet';
-import { ClaudeCodeService } from './services/ClaudeCodeService';
-import { StatusBar } from './ui/StatusBar';
+import { StatusBarFormatter } from './ui/StatusBar';
+import { PetStorage } from './services/PetStorage';
+import { PET_CONFIG } from './core/config';
 
-export function activate(context: claude.ExtensionContext) {
-  // Initialize services
-  const claudeService = new ClaudeCodeService();
-  
-  // Load or create pet state
-  const initialState = await loadPersistedState(claudeService) || {
-    energy: 100,
-    expression: '(^_^)',
-    lastFeedTime: new Date(),
-    totalTokensConsumed: 0
-  };
-  
-  const pet = new Pet(initialState, {
-    config: require('./core/config').config,
-    logger: Logger.getInstance()
-  });
-  
-  // Initialize UI
-  const statusBar = new StatusBar(pet, claudeService);
-  
-  // Set up token feeding
-  const tokenDisposable = claudeService.onDidCountTokens((tokens) => {
-    pet.feed(tokens);
-  });
-  
-  // Register commands
-  claudeService.registerCommand('statusPet.adoptNew', () => {
-    pet.adoptNewPet();
-  });
-  
-  claudeService.registerCommand('statusPet.showStatus', () => {
-    const state = pet.getState();
-    claude.window.showInformationMessage(
-      `Pet Energy: ${state.energy}%, Expression: ${state.expression}`
-    );
-  });
-  
-  // Register for cleanup
-  context.subscriptions.push(
-    claudeService,
-    statusBar,
-    tokenDisposable
-  );
-  
-  // Set up periodic decay
-  const decayInterval = setInterval(() => {
-    pet.applyTimeDecay();
-  }, 60 * 60 * 1000); // Every hour
-  
-  context.subscriptions.push({
-    dispose: () => clearInterval(decayInterval)
-  });
-}
+export class ClaudeCodeStatusLine {
+  private pet: Pet;
+  private formatter: StatusBarFormatter;
+  private storage: PetStorage;
 
-export function deactivate() {
-  // Cleanup is handled automatically by subscriptions
-}
+  constructor() {
+    this.storage = new PetStorage();
+    this.formatter = new StatusBarFormatter();
+    
+    // Load or create initial pet state
+    const savedState = this.storage.loadState();
+    const initialState: IPetState = savedState || {
+      energy: PET_CONFIG.INITIAL_ENERGY,
+      expression: PET_CONFIG.HAPPY_EXPRESSION,
+      lastFeedTime: new Date(),
+      totalTokensConsumed: 0
+    };
 
-async function loadPersistedState(service: ClaudeCodeService): Promise<IPetState | null> {
-  try {
-    const stateString = await service.getState();
-    if (stateString) {
-      return InputValidator.sanitizeStateData(JSON.parse(stateString));
+    this.pet = new Pet(initialState, { config: PET_CONFIG });
+    
+    // Apply time decay since last session
+    if (savedState) {
+      this.pet.applyTimeDecay();
     }
-  } catch (error) {
-    Logger.getInstance().warn('extension', 'Failed to load persisted state', { error });
   }
-  return null;
+
+  public getStatusDisplay(): string {
+    const state = this.pet.getState();
+    return this.formatter.formatPetDisplay(state);
+  }
+
+  public saveState(): void {
+    this.storage.saveState(this.pet.getState());
+  }
+}
+
+// Main execution for CLI
+function main(): void {
+  try {
+    const statusLine = new ClaudeCodeStatusLine();
+    const display = statusLine.getStatusDisplay();
+    statusLine.saveState();
+    
+    // Output the status line display
+    process.stdout.write(display);
+  } catch (error) {
+    // Fallback display on error
+    process.stdout.write('(?) ERROR');
+    process.stderr.write(`Pet status error: ${error}\n`);
+    process.exit(1);
+  }
+}
+
+// Run if this is the main module
+if (require.main === module) {
+  main();
 }
 ```
 
-## API Testing Strategy
+## Claude Code Configuration
 
-Mock the Claude Code API for testing:
+The CLI script is configured in Claude Code through the status line settings:
+
+### Configuration File: `~/.claude/settings.json`
+
+```json
+{
+  "statusLine": {
+    "type": "command", 
+    "command": "/path/to/ccpet/dist/extension.js",
+    "padding": 0
+  }
+}
+```
+
+### Alternative Interactive Configuration
+
+```bash
+claude-code
+> /statusline
+# Follow prompts to configure status bar pet display
+```
+
+## Testing Strategy
+
+### Mock Filesystem Operations
 
 ```typescript
-// src/__tests__/mocks/claudeCodeMock.ts
-export const mockClaudeCodeAPI = {
-  window: {
-    createStatusBarItem: vi.fn().mockReturnValue({
-      text: '',
-      show: vi.fn(),
-      hide: vi.fn(),
-      dispose: vi.fn()
-    }),
-    showInformationMessage: vi.fn()
-  },
-  commands: {
-    registerCommand: vi.fn().mockReturnValue({
-      dispose: vi.fn()
-    })
-  },
-  workspace: {
-    onDidChangeTextDocument: vi.fn().mockReturnValue({
-      dispose: vi.fn()
-    }),
-    getConfiguration: vi.fn().mockReturnValue({
-      get: vi.fn().mockResolvedValue(undefined),
-      update: vi.fn().mockResolvedValue(undefined)
-    })
-  }
-};
+import { vi } from 'vitest';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
-// src/services/__tests__/ClaudeCodeService.test.ts
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ClaudeCodeService } from '../ClaudeCodeService';
+// Mock filesystem and os modules
+vi.mock('fs');
+vi.mock('os');
+vi.mock('path');
 
-// Mock the Claude Code API
-vi.mock('claude-code-api', () => mockClaudeCodeAPI);
-
-describe('ClaudeCodeService', () => {
-  let service: ClaudeCodeService;
-
+describe('PetStorage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    service = new ClaudeCodeService();
+    
+    // Mock os.homedir
+    vi.mocked(os.homedir).mockReturnValue('/mock/home');
+    
+    // Mock path.join
+    vi.mocked(path.join)
+      .mockImplementation((...args) => args.join('/'));
+    
+    // Mock fs methods
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.mkdirSync).mockReturnValue(undefined);
+    vi.mocked(fs.readFileSync).mockReturnValue('{}');
+    vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
   });
 
-  describe('Status Bar Integration', () => {
-    it('should create and show status bar item', () => {
-      expect(mockClaudeCodeAPI.window.createStatusBarItem).toHaveBeenCalledWith(
-        expect.any(Number), // alignment
-        100 // priority
-      );
-    });
-
-    it('should update status bar text', () => {
-      const mockStatusBarItem = mockClaudeCodeAPI.window.createStatusBarItem();
-      
-      service.updateStatusBar('Test Pet (^_^) ████████░░');
-      
-      expect(mockStatusBarItem.text).toBe('Test Pet (^_^) ████████░░');
-    });
-  });
-
-  describe('Command Registration', () => {
-    it('should register commands with Claude Code', () => {
-      const mockCallback = vi.fn();
-      
-      service.registerCommand('test.command', mockCallback);
-      
-      expect(mockClaudeCodeAPI.commands.registerCommand).toHaveBeenCalledWith(
-        'test.command',
-        mockCallback
-      );
-    });
-  });
-
-  describe('Token Counting', () => {
-    it('should calculate tokens from document changes', () => {
-      const mockCallback = vi.fn();
-      const mockEvent = {
-        contentChanges: [
-          { text: 'Hello world' }, // ~3 tokens
-          { text: 'This is a test' }  // ~4 tokens
-        ]
-      };
-      
-      service.onDidCountTokens(mockCallback);
-      
-      // Simulate document change
-      const registeredCallback = mockClaudeCodeAPI.workspace.onDidChangeTextDocument.mock.calls[0][0];
-      registeredCallback(mockEvent);
-      
-      expect(mockCallback).toHaveBeenCalledWith(7); // Total tokens
-    });
+  it('should save and load pet state', () => {
+    const storage = new PetStorage();
+    const mockState = { energy: 75, expression: '(^_^)' };
+    
+    storage.saveState(mockState);
+    expect(fs.writeFileSync).toHaveBeenCalled();
   });
 });
 ```
 
-## Configuration Integration
+## Error Handling
 
-The service reads extension configuration:
+### Graceful Degradation
 
 ```typescript
-// package.json contribution
-{
-  "contributes": {
-    "configuration": {
-      "type": "object",
-      "title": "Status Pet Configuration",
-      "properties": {
-        "statusPet.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable the status bar pet"
-        },
-        "statusPet.updateInterval": {
-          "type": "number",
-          "default": 100,
-          "description": "Status bar update interval in milliseconds"
-        },
-        "statusPet.persistedState": {
-          "type": "string",
-          "description": "Persisted pet state (internal use)"
-        }
-      }
-    }
+// Always provide fallback display on errors
+function main(): void {
+  try {
+    const statusLine = new ClaudeCodeStatusLine();
+    const display = statusLine.getStatusDisplay();
+    statusLine.saveState();
+    process.stdout.write(display);
+  } catch (error) {
+    // Fallback to error display - never crash Claude Code
+    process.stdout.write('(?) ERROR');
+    process.stderr.write(`Pet status error: ${error}\n`);
+    process.exit(1);
   }
 }
 ```
 
-This API integration approach ensures:
-- **Clean Abstraction**: Core logic is isolated from Claude Code specifics
-- **Error Resilience**: API failures don't crash the extension
-- **Testability**: Easy to mock for unit tests
-- **Resource Cleanup**: Proper disposal prevents memory leaks
+### Storage Error Recovery
+
+```typescript
+public loadState(): IPetState | null {
+  try {
+    // ... load logic
+  } catch (error) {
+    console.error('Failed to load pet state:', error);
+    return null; // Return null to trigger initial state creation
+  }
+}
+```
+
+## Performance Considerations
+
+- **Fast Execution**: CLI script must complete in <100ms to avoid status line lag
+- **Minimal Dependencies**: No external libraries beyond Node.js built-ins
+- **Efficient File I/O**: Single file read/write per execution
+- **Memory Efficient**: No persistent processes or memory leaks
+
+## Deployment
+
+The CLI script is built as a single executable file:
+
+```bash
+npm run build    # Produces dist/extension.js
+chmod +x dist/extension.js
+```
+
+Users configure the path to this script in their Claude Code settings.
