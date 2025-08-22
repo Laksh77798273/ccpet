@@ -6,12 +6,21 @@
   "bin": {
     "ccpet": "dist/ccpet.js"
   },
+  "files": [
+    "/dist"
+  ],
   "scripts": {
     "build": "node esbuild.config.js",
     "watch": "node esbuild.config.js --watch",
     "test": "vitest",
     "test:unit": "vitest run src/core src/ui src/services",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "prepublishOnly": "npm run build && npm test",
+    "version": "npm run build",
+    "postversion": "git push && git push --tags",
+    "release:patch": "npm version patch",
+    "release:minor": "npm version minor",
+    "release:major": "npm version major"
   },
   "devDependencies": {
     "@types/node": "20.10.5",
@@ -25,5 +34,15 @@
     "node": ">=20.0.0",
     "npm": ">=9.0.0"
   },
-  "keywords": ["claude-code", "status-line", "pet", "cli"]
+  "keywords": ["claude-code", "status-line", "ccpet", "pet", "cli", "virtual-pet", "productivity"],
+  "author": "Claude Code Team",
+  "license": "MIT",
+  "homepage": "https://github.com/terryso/ccpet#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/terryso/ccpet.git"
+  },
+  "bugs": {
+    "url": "https://github.com/terryso/ccpet/issues"
+  }
 }

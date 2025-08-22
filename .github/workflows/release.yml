@@ -1,0 +1,137 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  test:
+    name: Test before release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run type checking
+        run: npx tsc --noEmit
+        
+      - name: Build project
+        run: npm run build
+        
+      - name: Run tests
+        run: npm test
+
+  publish:
+    name: Publish to npm
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build project
+        run: npm run build
+        
+      - name: Verify package contents
+        run: |
+          echo "Checking package contents..."
+          npm pack --dry-run
+          echo "✅ Package contents verified"
+          
+      - name: Publish to npm
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  github-release:
+    name: Create GitHub Release
+    needs: [test, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for changelog generation
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Get tag version
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        
+      - name: Generate changelog for this release
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -A1 ${{ steps.get_version.outputs.VERSION }} | tail -n1)
+          if [ -z "$PREVIOUS_TAG" ] || [ "$PREVIOUS_TAG" = "${{ steps.get_version.outputs.VERSION }}" ]; then
+            # If no previous tag, use the first commit
+            PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+          
+          # Generate changelog for this release only
+          echo "## 🐾 Claude Code Pet ${{ steps.get_version.outputs.VERSION }}" > release_notes.md
+          echo "" >> release_notes.md
+          echo "### 📋 Changes" >> release_notes.md
+          echo "" >> release_notes.md
+          
+          # Get commits between tags with better formatting
+          git log --pretty=format:"- %s (%h)" ${PREVIOUS_TAG}..${{ steps.get_version.outputs.VERSION }} --no-merges | sed 's/fix:/🐛 Fixed:/g; s/feat:/✨ Added:/g; s/docs:/📚 Documentation:/g; s/test:/🧪 Tests:/g; s/chore:/🔧 Maintenance:/g; s/refactor:/♻️ Refactored:/g; s/perf:/⚡ Performance:/g' >> release_notes.md
+          
+          echo "" >> release_notes.md
+          echo "### 📦 Installation" >> release_notes.md
+          echo '```bash' >> release_notes.md
+          echo 'npm install -g ccpet' >> release_notes.md
+          echo '```' >> release_notes.md
+          echo "" >> release_notes.md
+          echo "### 🚀 Quick Start" >> release_notes.md
+          echo '```bash' >> release_notes.md
+          echo '# Configure Claude Code to use ccpet as status line' >> release_notes.md
+          echo 'claude config set -g status_line "node $(npm root -g)/ccpet/dist/ccpet.js"' >> release_notes.md
+          echo '' >> release_notes.md
+          echo '# Or run directly' >> release_notes.md
+          echo 'ccpet' >> release_notes.md
+          echo '```' >> release_notes.md
+          
+          cat release_notes.md
+        
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          name: Claude Code Pet ${{ steps.get_version.outputs.VERSION }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
