@@ -1,6 +1,6 @@
 {
   "name": "ccpet",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A Claude Code status line script that displays a virtual pet",
   "main": "dist/ccpet.js",
   "bin": {
@@ -34,7 +34,15 @@
     "node": ">=20.0.0",
     "npm": ">=9.0.0"
   },
-  "keywords": ["claude-code", "status-line", "ccpet", "pet", "cli", "virtual-pet", "productivity"],
+  "keywords": [
+    "claude-code",
+    "status-line",
+    "ccpet",
+    "pet",
+    "cli",
+    "virtual-pet",
+    "productivity"
+  ],
   "author": "Claude Code Team",
   "license": "MIT",
   "homepage": "https://github.com/terryso/ccpet#readme",
