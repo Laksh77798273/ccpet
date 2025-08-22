@@ -169,7 +169,7 @@ export class Pet {
         lastFeedTime: now,
         totalTokensConsumed: 0,
         accumulatedTokens: 0,
-        totalLifetimeTokens: this.state.totalLifetimeTokens, // 保留终身token计数，不重置
+        totalLifetimeTokens: 0, // 宠物死亡后重新开始，清零所有token计数
         lastDecayTime: now,
         sessionTotalInputTokens: 0,
         sessionTotalOutputTokens: 0,
