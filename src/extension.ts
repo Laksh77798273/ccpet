@@ -1,10 +1,8 @@
 import { Pet, IPetState } from './core/Pet';
 import { StatusBarFormatter } from './ui/StatusBar';
 import { PetStorage } from './services/PetStorage';
+import { getTokenMetrics } from './utils/jsonl';
 import { PET_CONFIG } from './core/config';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
 
 class ClaudeCodeStatusLine {
   private pet: Pet;
@@ -32,7 +30,37 @@ class ClaudeCodeStatusLine {
     }
   }
 
+  public async processTokensAndGetStatusDisplay(claudeCodeInput: ClaudeCodeStatusInput): Promise<string> {
+    try {
+      // Always apply time decay first
+      this.pet.applyTimeDecay();
+      
+      // Process tokens from JSONL transcript file
+      const tokenMetrics = await getTokenMetrics(claudeCodeInput.transcript_path);
+      
+      if (tokenMetrics.totalTokens > 0) {
+        // Convert tokens to energy and feed pet
+        // Use a simple 1:1 ratio for token to energy conversion
+        const energyToAdd = tokenMetrics.totalTokens * 0.1; // 10 tokens = 1 energy
+        this.pet.addEnergy(energyToAdd);
+      }
+      
+      // Get current state and format display
+      const state = this.pet.getState();
+      return this.formatter.formatPetDisplay(state);
+    } catch (error) {
+      console.error('Token processing failed:', error);
+      // Apply time decay even on error
+      this.pet.applyTimeDecay();
+      // Fallback to current state without token processing
+      const state = this.pet.getState();
+      return this.formatter.formatPetDisplay(state);
+    }
+  }
+
   public getStatusDisplay(): string {
+    // Apply time decay before getting display
+    this.pet.applyTimeDecay();
     const state = this.pet.getState();
     return this.formatter.formatPetDisplay(state);
   }
@@ -42,11 +70,78 @@ class ClaudeCodeStatusLine {
   }
 }
 
+// Claude Code Status Hook Interface
+interface ClaudeCodeStatusInput {
+  hook_event_name: string;
+  session_id: string;
+  transcript_path: string;
+  cwd: string;
+  model: {
+    id: string;
+    display_name: string;
+  };
+  workspace: {
+    current_dir: string;
+    project_dir: string;
+  };
+  version: string;
+  output_style: {
+    name: string;
+  };
+  cost: {
+    total_cost_usd: number;
+    total_duration_ms: number;
+    total_api_duration_ms: number;
+    total_lines_added: number;
+    total_lines_removed: number;
+  };
+}
+
+// Function to read from stdin
+function readStdin(): Promise<string> {
+  return new Promise((resolve) => {
+    let input = '';
+    process.stdin.setEncoding('utf8');
+    
+    process.stdin.on('data', (chunk) => {
+      input += chunk;
+    });
+    
+    process.stdin.on('end', () => {
+      resolve(input.trim());
+    });
+  });
+}
+
 // Main execution for CLI
-function main(): void {
+async function main(): Promise<void> {
   try {
+    // Read Claude Code JSON input from stdin
+    const inputData = await readStdin();
+    
+    if (!inputData) {
+      // No input provided - show basic status
+      const statusLine = new ClaudeCodeStatusLine();
+      const display = statusLine.getStatusDisplay();
+      statusLine.saveState();
+      process.stdout.write(display);
+      return;
+    }
+    
+    let claudeCodeInput: ClaudeCodeStatusInput;
+    try {
+      claudeCodeInput = JSON.parse(inputData);
+    } catch (error) {
+      // Invalid JSON - show basic status
+      const statusLine = new ClaudeCodeStatusLine();
+      const display = statusLine.getStatusDisplay();
+      statusLine.saveState();
+      process.stdout.write(display);
+      return;
+    }
+    
     const statusLine = new ClaudeCodeStatusLine();
-    const display = statusLine.getStatusDisplay();
+    const display = await statusLine.processTokensAndGetStatusDisplay(claudeCodeInput);
     statusLine.saveState();
     
     // Output the status line display

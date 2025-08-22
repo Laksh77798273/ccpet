@@ -75,7 +75,7 @@ describe('StatusBarFormatter Component', () => {
 
       const result = formatter.generateEnergyBar(75);
 
-      expect(result).toBe('███████░░░');
+      expect(result).toBe('████████░░'); // 75% rounds to 8 filled bars
       expect(result.length).toBe(10);
     });
 
@@ -84,7 +84,7 @@ describe('StatusBarFormatter Component', () => {
 
       const result = formatter.generateEnergyBar(25);
 
-      expect(result).toBe('██░░░░░░░░');
+      expect(result).toBe('███░░░░░░░'); // 25% rounds to 3 filled bars
       expect(result.length).toBe(10);
     });
 
@@ -102,7 +102,7 @@ describe('StatusBarFormatter Component', () => {
 
       const result = formatter.generateEnergyBar(99);
 
-      expect(result).toBe('█████████░');
+      expect(result).toBe('██████████'); // 99% rounds to 10 filled bars (full)
       expect(result.length).toBe(10);
     });
 
@@ -133,9 +133,9 @@ describe('StatusBarFormatter Component', () => {
     it('should handle generateEnergyBar errors gracefully', () => {
       const formatter = new StatusBarFormatter();
 
-      // Mock Math.floor to throw an error to trigger catch block
-      const originalMathFloor = Math.floor;
-      Math.floor = vi.fn().mockImplementation(() => {
+      // Mock Math.round to throw an error to trigger catch block
+      const originalMathRound = Math.round;
+      Math.round = vi.fn().mockImplementation(() => {
         throw new Error('Math error');
       });
 
@@ -143,8 +143,8 @@ describe('StatusBarFormatter Component', () => {
 
       expect(result).toBe('??????????');
       
-      // Restore original Math.floor
-      Math.floor = originalMathFloor;
+      // Restore original Math.round
+      Math.round = originalMathRound;
     });
   });
 

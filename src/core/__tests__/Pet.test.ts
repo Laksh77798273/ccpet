@@ -146,7 +146,7 @@ describe('Pet Core Logic', () => {
   });
 
   describe('applyTimeDecay method', () => {
-    it('should reduce energy based on hours since last feed', () => {
+    it('should reduce energy based on minutes since last feed', () => {
       const oneHourAgo = new Date(Date.now() - (60 * 60 * 1000));
       const initialState = { ...createInitialState(), lastFeedTime: oneHourAgo };
       const pet = new Pet(initialState, mockDependencies);
@@ -154,7 +154,9 @@ describe('Pet Core Logic', () => {
       pet.applyTimeDecay();
       const newState = pet.getState();
       
-      expect(newState.energy).toBe(45);
+      // 1小时(60分钟) * (100/(3*24*60)) ≈ 1.39点衰减
+      // 50 - 1.39 ≈ 48.61
+      expect(newState.energy).toBeCloseTo(48.61, 1);
     });
 
     it('should not reduce energy below 0', () => {
@@ -427,7 +429,9 @@ describe('Pet Core Logic', () => {
       pet.applyTimeDecay();
       const state = pet.getState();
       
-      expect(state.energy).toBe(40);
+      // 2小时(120分钟) * (100/(3*24*60)) ≈ 2.78点衰减  
+      // 50 - 2.78 ≈ 47.22
+      expect(state.energy).toBeCloseTo(47.22, 1);
     });
   });
 });

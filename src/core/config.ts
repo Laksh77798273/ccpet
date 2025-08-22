@@ -23,3 +23,4 @@ export const PET_CONFIG = {
 export const LOGGER_CONFIG = {
   COMPONENT_NAME: 'StatusPetExtension'
 } as const;
+

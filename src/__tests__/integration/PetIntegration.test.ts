@@ -76,15 +76,18 @@ describe('Pet Integration Tests', () => {
 
     it('should handle pet state transitions correctly', () => {
       const formatter = new StatusBarFormatter();
-      const tenHoursAgo = new Date(Date.now() - (10 * 60 * 60 * 1000));
-      const initialState = { ...createInitialState(), energy: 85, lastFeedTime: tenHoursAgo };
+      // 使用更长时间来达到sick状态：约60小时(2.5天)
+      const sixtyHoursAgo = new Date(Date.now() - (60 * 60 * 60 * 1000));
+      const initialState = { ...createInitialState(), energy: 85, lastFeedTime: sixtyHoursAgo };
       const pet = new Pet(initialState, { config: PET_CONFIG });
 
       pet.applyTimeDecay();
       const state = pet.getState();
       const display = formatter.formatPetDisplay(state);
 
-      expect(display).toMatch(/\(u_u\) /);
+      // 60小时 * 60分钟 * 0.0231 ≈ 83.33点衰减
+      // 85 - 83.33 ≈ 1.67，应该是dead状态
+      expect(display).toMatch(/\(x_x\) /);
     });
   });
 
@@ -114,7 +117,7 @@ describe('Pet Integration Tests', () => {
       const statusLine2 = new ClaudeCodeStatusLine();
       const display2 = statusLine2.getStatusDisplay();
       
-      expect(display2).toBe('(^_^) ███████░░░');
+      expect(display2).toBe('(^_^) ████████░░'); // 75% energy (rounded to 8 bars)
     });
 
     it('should handle error conditions throughout CLI lifecycle', () => {

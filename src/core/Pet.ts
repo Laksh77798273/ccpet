@@ -5,6 +5,7 @@ export interface IPetState {
   expression: string;
   lastFeedTime: Date;
   totalTokensConsumed: number;
+  lastDecayTime?: Date; // 上次计算衰减的时间
 }
 
 interface IPetDependencies {
@@ -53,12 +54,24 @@ export class Pet {
   public applyTimeDecay(): void {
     try {
       const now = new Date();
-      const hoursSinceLastFeed = Math.floor(
-        (now.getTime() - this.state.lastFeedTime.getTime()) / (1000 * 60 * 60)
-      );
+      // 使用lastDecayTime来计算衰减，如果不存在则使用lastFeedTime
+      const lastTime = this.state.lastDecayTime || this.state.lastFeedTime;
+      const minutesSinceLastDecay = 
+        (now.getTime() - lastTime.getTime()) / (1000 * 60);
       
-      if (hoursSinceLastFeed > 0) {
-        this.decreaseEnergy(hoursSinceLastFeed * 5);
+      if (minutesSinceLastDecay > 0) {
+        // 3天(4320分钟)内从100到0，每分钟减少约0.0231点能量
+        const ENERGY_DECAY_PER_MINUTE = 100 / (3 * 24 * 60); // ≈ 0.0231
+        const energyDecay = minutesSinceLastDecay * ENERGY_DECAY_PER_MINUTE;
+        
+        if (energyDecay > 0) {
+          this.decreaseEnergy(energyDecay);
+          // 更新lastDecayTime但保持lastFeedTime不变
+          this.state = {
+            ...this.state,
+            lastDecayTime: now
+          };
+        }
       }
     } catch (error) {
       console.error('Pet time decay failed:', error);
@@ -71,9 +84,12 @@ export class Pet {
         throw new Error(`Invalid energy amount: ${amount}. Must be a non-negative number.`);
       }
 
+      const now = new Date();
       this.state = {
         ...this.state,
-        energy: Math.min(100, this.state.energy + amount)
+        energy: Math.min(100, this.state.energy + amount),
+        lastFeedTime: now,
+        lastDecayTime: now
       };
       this._updateExpression();
       this._notify();

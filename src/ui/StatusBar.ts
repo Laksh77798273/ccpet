@@ -23,7 +23,7 @@ export class StatusBarFormatter {
       }
       
       const clampedEnergy = Math.max(0, Math.min(100, energy));
-      const filledBars = Math.floor((clampedEnergy / 100) * PET_CONFIG.ENERGY_BAR_LENGTH);
+      const filledBars = Math.round((clampedEnergy / 100) * PET_CONFIG.ENERGY_BAR_LENGTH);
       const emptyBars = PET_CONFIG.ENERGY_BAR_LENGTH - filledBars;
       
       return (

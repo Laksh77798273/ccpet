@@ -30,6 +30,11 @@ export class PetStorage {
         parsed.lastFeedTime = new Date(parsed.lastFeedTime);
       }
       
+      // Convert lastDecayTime back to Date object if it exists
+      if (parsed.lastDecayTime) {
+        parsed.lastDecayTime = new Date(parsed.lastDecayTime);
+      }
+      
       return parsed as IPetState;
     } catch (error) {
       console.error('Failed to load pet state:', error);
@@ -45,6 +50,8 @@ export class PetStorage {
       console.error('Failed to save pet state:', error);
     }
   }
+
+
 
   private ensureDirectoryExists(dirPath: string): void {
     try {
