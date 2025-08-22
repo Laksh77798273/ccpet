@@ -35,6 +35,11 @@ export class PetStorage {
         parsed.lastDecayTime = new Date(parsed.lastDecayTime);
       }
       
+      // Handle backward compatibility - add totalLifetimeTokens if missing
+      if (parsed.totalLifetimeTokens === undefined) {
+        parsed.totalLifetimeTokens = parsed.totalTokensConsumed || 0;
+      }
+      
       return parsed as IPetState;
     } catch (error) {
       console.error('Failed to load pet state:', error);

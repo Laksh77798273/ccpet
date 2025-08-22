@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Pet, IPetState } from '../../core/Pet';
 import { StatusBarFormatter } from '../../ui/StatusBar';
 import { PetStorage } from '../../services/PetStorage';
-import { ClaudeCodeStatusLine } from '../../extension';
+import { ClaudeCodeStatusLine } from '../../ccpet';
 import { PET_CONFIG } from '../../core/config';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -22,7 +22,8 @@ describe('Pet Integration Tests', () => {
     energy: PET_CONFIG.INITIAL_ENERGY,
     expression: PET_CONFIG.HAPPY_EXPRESSION,
     lastFeedTime: new Date(),
-    totalTokensConsumed: 0
+    totalTokensConsumed: 0,
+    accumulatedTokens: 0
   });
 
   beforeEach(() => {
@@ -48,34 +49,34 @@ describe('Pet Integration Tests', () => {
 
   describe('Pet and StatusBarFormatter Integration', () => {
     it('should format pet display correctly when pet is fed', () => {
-      const formatter = new StatusBarFormatter();
+      const formatter = new StatusBarFormatter(true);
       const pet = new Pet(createInitialState(), { config: PET_CONFIG });
 
-      pet.feed(1);
+      pet.feed(1000000); // 1M tokens to trigger energy change
       const state = pet.getState();
       const display = formatter.formatPetDisplay(state);
 
-      expect(display).toBe('(^_^) ██████████');
+      expect(display).toBe('(^_^) ●●●●●●●●●● 100.00 (0)');
     });
 
     it('should reflect energy changes in display format', () => {
-      const formatter = new StatusBarFormatter();
-      const initialState = { ...createInitialState(), energy: 50 };
+      const formatter = new StatusBarFormatter(true);
+      const initialState = { ...createInitialState(), energy: 50, expression: '(o_o)' };
       const pet = new Pet(initialState, { config: PET_CONFIG });
       
-      pet.feed(2);
+      pet.feed(500000); // Not enough for energy change, just accumulate
       const state1 = pet.getState();
       const display1 = formatter.formatPetDisplay(state1);
-      expect(display1).toBe('(o_o) ███████░░░');
+      expect(display1).toBe('(o_o) ●●●●●○○○○○ 50.00 (500.0K)'); // 50% energy, 500K accumulated
 
-      pet.feed(2);
+      pet.feed(500000); // Now we have 1M total, triggers energy change
       const state2 = pet.getState();
       const display2 = formatter.formatPetDisplay(state2);
-      expect(display2).toBe('(^_^) █████████░');
+      expect(display2).toBe('(o_o) ●●●●●○○○○○ 51.00 (0)'); // 51% energy, 0 accumulated (converted to energy)
     });
 
     it('should handle pet state transitions correctly', () => {
-      const formatter = new StatusBarFormatter();
+      const formatter = new StatusBarFormatter(true);
       // 使用更长时间来达到sick状态：约60小时(2.5天)
       const sixtyHoursAgo = new Date(Date.now() - (60 * 60 * 60 * 1000));
       const initialState = { ...createInitialState(), energy: 85, lastFeedTime: sixtyHoursAgo };
@@ -96,11 +97,11 @@ describe('Pet Integration Tests', () => {
       // First session - new pet
       vi.mocked(fs.existsSync).mockReturnValue(false);
       
-      const statusLine1 = new ClaudeCodeStatusLine();
+      const statusLine1 = new ClaudeCodeStatusLine(true);
       const display1 = statusLine1.getStatusDisplay();
       statusLine1.saveState();
       
-      expect(display1).toBe('(^_^) ██████████');
+      expect(display1).toBe('(^_^) ●●●●●●●●●● 100.00 (0)');
       expect(fs.writeFileSync).toHaveBeenCalled();
       
       // Second session - load saved state
@@ -108,16 +109,17 @@ describe('Pet Integration Tests', () => {
         energy: 75,
         expression: '(^_^)',
         lastFeedTime: new Date().toISOString(),
-        totalTokensConsumed: 5
+        totalTokensConsumed: 5,
+        accumulatedTokens: 0
       };
       
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(savedState));
       
-      const statusLine2 = new ClaudeCodeStatusLine();
+      const statusLine2 = new ClaudeCodeStatusLine(true);
       const display2 = statusLine2.getStatusDisplay();
       
-      expect(display2).toBe('(^_^) ████████░░'); // 75% energy (rounded to 8 bars)
+      expect(display2).toBe('(^_^) ●●●●●●●●○○ 75.00 (0)'); // 75% energy (rounded to 8 bars)
     });
 
     it('should handle error conditions throughout CLI lifecycle', () => {
@@ -131,16 +133,16 @@ describe('Pet Integration Tests', () => {
       });
 
       expect(() => {
-        const statusLine = new ClaudeCodeStatusLine();
+        const statusLine = new ClaudeCodeStatusLine(true);
         const display = statusLine.getStatusDisplay();
         statusLine.saveState();
-        expect(display).toBe('(^_^) ██████████');
+        expect(display).toBe('(^_^) ●●●●●●●●●● 100.00 (0)');
       }).not.toThrow();
     });
 
     it('should maintain pet state consistency across components', () => {
       const storage = new PetStorage();
-      const formatter = new StatusBarFormatter();
+      const formatter = new StatusBarFormatter(true);
       const pet = new Pet(createInitialState(), { config: PET_CONFIG });
       
       // Feed pet and check consistency
@@ -159,7 +161,7 @@ describe('Pet Integration Tests', () => {
       const loadedState = storage.loadState();
       
       expect(loadedState).toEqual(state);
-      expect(display).toBe('(^_^) ██████████');
+      expect(display).toBe('(^_^) ●●●●●●●●●● 100.00 (3)');
     });
   });
 });

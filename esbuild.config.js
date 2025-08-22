@@ -3,9 +3,9 @@ const esbuild = require('esbuild');
 const isWatch = process.argv.includes('--watch');
 
 const buildOptions = {
-  entryPoints: ['src/extension.ts'],
+  entryPoints: ['src/ccpet.ts'],
   bundle: true,
-  outfile: 'dist/extension.js',
+  outfile: 'dist/ccpet.js',
   external: [],
   format: 'cjs',
   platform: 'node',

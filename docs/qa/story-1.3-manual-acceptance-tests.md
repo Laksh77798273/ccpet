@@ -19,7 +19,7 @@
 
 - [ ] 项目构建成功 (`npm run build`)
 - [ ] 所有单元测试通过 (`npm test`)
-- [ ] CLI可执行文件位于 `dist/extension.js`
+- [ ] CLI可执行文件位于 `dist/ccpet.js`
 - [ ] 测试目录已初始化Git仓库
 - [ ] Claude Code已配置使用宠物扩展
 
@@ -37,14 +37,14 @@
 
 **测试步骤**:
 
-1. 执行CLI命令: `node dist/extension.js`
+1. 执行CLI命令: `node dist/ccpet.js`
 2. 记录当前能量水平和表情
 3. 等待10秒后再次执行
 4. 验证能量保持稳定（短时间内无衰减）
 
 **预期结果**:
 
-- 宠物显示能量条 (例如: `(^_^) ██████████`)
+- 宠物显示能量条 (例如: `(^_^) ●●●●●●●●●●`)
 - 快速连续执行时能量水平保持一致
 - 表情符合故事1.2的能量阈值设定
 
@@ -63,12 +63,12 @@
 
 **测试步骤**:
 
-1. 执行CLI并记录基线: `node dist/extension.js`
+1. 执行CLI并记录基线: `node dist/ccpet.js`
 2. 创建/修改源代码文件 (添加10+行代码)
 3. 暂存更改: `git add .`
 4. 提交更改: `git commit -m "测试宠物喂养的提交"`
 5. 等待6秒
-6. 再次执行CLI: `node dist/extension.js`
+6. 再次执行CLI: `node dist/ccpet.js`
 7. 对比能量水平
 
 **预期结果**:
@@ -93,11 +93,11 @@
 
 **测试步骤**:
 
-1. 执行CLI并记录基线: `node dist/extension.js`
+1. 执行CLI并记录基线: `node dist/ccpet.js`
 2. 修改现有源代码文件 (更改5+行)
 3. 创建新的源代码文件 (.ts, .js, .py等)
 4. 等待6秒
-5. 再次执行CLI: `node dist/extension.js`
+5. 再次执行CLI: `node dist/ccpet.js`
 6. 对比能量水平
 
 **预期结果**:
@@ -117,11 +117,11 @@
 
 **测试步骤**:
 
-1. 执行CLI: `node dist/extension.js`
+1. 执行CLI: `node dist/ccpet.js`
 2. 进行重大代码更改 (提交新文件)
-3. 立即再次执行CLI (< 5秒): `node dist/extension.js`
+3. 立即再次执行CLI (< 5秒): `node dist/ccpet.js`
 4. 等待6秒
-5. 再次执行CLI: `node dist/extension.js`
+5. 再次执行CLI: `node dist/ccpet.js`
 
 **预期结果**:
 
@@ -143,7 +143,7 @@
 2. 进行大规模更改 (20+文件, 100+行)
 3. 提交更改
 4. 等待6秒
-5. 执行CLI: `node dist/extension.js`
+5. 执行CLI: `node dist/ccpet.js`
 
 **预期结果**:
 
@@ -165,7 +165,7 @@
 **测试步骤**:
 
 1. 移动到非git目录: `cd /tmp`
-2. 执行CLI: `node /path/to/dist/extension.js`
+2. 执行CLI: `node /path/to/dist/ccpet.js`
 
 **预期结果**:
 
@@ -286,7 +286,7 @@
    {
      "statusLine": {
        "type": "command", 
-       "command": "/path/to/ccpet/dist/extension.js"
+       "command": "/path/to/ccpet/dist/ccpet.js"
      }
    }
    ```
@@ -335,7 +335,7 @@
 
 **测试步骤**:
 
-1. 计时CLI执行: `time node dist/extension.js`
+1. 计时CLI执行: `time node dist/ccpet.js`
 2. 在大型仓库中重复测试 (1000+文件)
 3. 测试深层目录结构
 

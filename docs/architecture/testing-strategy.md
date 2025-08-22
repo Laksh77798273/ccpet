@@ -381,7 +381,7 @@ describe('Status Pet E2E Tests', () => {
     // Verify extension activates and shows pet in status bar
     const statusBarText = await getStatusBarText();
     expect(statusBarText).toContain('(^_^)'); // Happy expression
-    expect(statusBarText).toContain('█'); // Energy bar
+    expect(statusBarText).toContain('●'); // Energy bar
   });
 
   it('should update pet when user codes', async () => {

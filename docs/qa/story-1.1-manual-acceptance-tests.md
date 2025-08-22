@@ -43,7 +43,7 @@
 2. **构建和安装**
    - [ ] 导航到项目目录 `/Users/nick/CascadeProjects/ccpet`
    - [ ] 运行构建命令: `npm run build`
-   - [ ] 验证构建成功，生成 `dist/extension.js`
+   - [ ] 验证构建成功，生成 `dist/ccpet.js`
    - [ ] **预期结果**: 构建无错误，输出文件存在
    - [ ] **实际结果**: ________________
 
@@ -54,13 +54,13 @@
    {
      "statusLine": {
        "type": "command",
-       "command": "/Users/nick/CascadeProjects/ccpet/dist/extension.js",
+       "command": "/Users/nick/CascadeProjects/ccpet/dist/ccpet.js",
        "padding": 0
      }
    }
    ```
    - [ ] 确保脚本路径指向正确的构建输出文件
-   - [ ] 验证脚本有执行权限: `chmod +x dist/extension.js`
+   - [ ] 验证脚本有执行权限: `chmod +x dist/ccpet.js`
    - [ ] 重启Claude Code CLI使配置生效
    - [ ] **预期结果**: 配置加载无错误，状态栏显示宠物
    - [ ] **实际结果**: ________________
@@ -91,12 +91,12 @@
 3. **初始能量条验证**
    - [ ] 检查宠物旁边的能量条显示
    - [ ] 验证能量条为满格状态
-   - [ ] **预期结果**: 显示满格能量条 `██████████` (10个满格字符)
+   - [ ] **预期结果**: 显示满格能量条 `●●●●●●●●●●` (10个满格字符)
    - [ ] **实际结果**: ________________
 
 4. **完整格式验证**
    - [ ] 验证完整显示格式
-   - [ ] **预期结果**: `(^_^) ██████████` 或相似格式
+   - [ ] **预期结果**: `(^_^) ●●●●●●●●●●` 或相似格式
    - [ ] **实际结果**: ________________
 
 **验收标准映射**: ✅ AC2 - Pet初始表情为happy  
@@ -247,7 +247,7 @@
 {
   "statusLine": {
     "type": "command", 
-    "command": "/Users/nick/CascadeProjects/ccpet/dist/extension.js",
+    "command": "/Users/nick/CascadeProjects/ccpet/dist/ccpet.js",
     "padding": 0
   }
 }
@@ -255,7 +255,7 @@
 
 **重要提示**: 
 - 请将 `command` 路径替换为您实际的项目路径
-- 确保脚本有执行权限: `chmod +x dist/extension.js`
+- 确保脚本有执行权限: `chmod +x dist/ccpet.js`
 - 路径必须是绝对路径，不能使用 `~` 或相对路径
 
 #### 替代配置方法

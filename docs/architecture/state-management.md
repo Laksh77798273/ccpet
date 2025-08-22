@@ -135,7 +135,7 @@ export class StatusBar {
   private generateEnergyBar(energy: number): string {
     const totalBars = 10;
     const filledBars = Math.floor((energy / 100) * totalBars);
-    return '█'.repeat(filledBars) + '░'.repeat(totalBars - filledBars);
+    return '●'.repeat(filledBars) + '○'.repeat(totalBars - filledBars);
   }
 
   public dispose(): void {

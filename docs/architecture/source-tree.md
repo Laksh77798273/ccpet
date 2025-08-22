@@ -22,11 +22,11 @@ ccpet/
 │   │   └── __tests__/
 │   │       └── StatusBar.test.ts
 │   ├── __tests__/          # Integration tests
-│   │   ├── extension.test.ts
+│   │   ├── ccpet.test.ts
 │   │   ├── integration/
 │   │   │   └── PetIntegration.test.ts
 │   │   └── setup.ts        # Global test setup
-│   └── extension.ts        # CLI script main entry file
+│   └── ccpet.ts        # CLI script main entry file
 ├── docs/                   # Project documentation
 │   ├── architecture/
 │   ├── qa/
@@ -54,7 +54,7 @@ ccpet/
 
 - **StatusBar.ts**: StatusBarFormatter class that converts pet state to CLI output format
 
-### CLI Entry Point (`src/extension.ts`)
+### CLI Entry Point (`src/ccpet.ts`)
 
 - **ClaudeCodeStatusLine**: Main CLI class that orchestrates all components
 - **main()**: CLI execution function that outputs pet status and saves state
@@ -92,7 +92,7 @@ graph TD
 | Core Logic (`Pet.ts`) | 500 lines | 20 lines | Moderate |
 | Services (`PetStorage.ts`) | 200 lines | 15 lines | Low |
 | UI (`StatusBar.ts`) | 150 lines | 10 lines | Low |
-| Entry Point (`extension.ts`) | 100 lines | 15 lines | Low |
+| Entry Point (`ccpet.ts`) | 100 lines | 15 lines | Low |
 
 ## State Management Flow
 
@@ -124,7 +124,7 @@ graph TD
 - `src/ui/__tests__/StatusBar.test.ts` - Display formatting
 
 ### Integration Tests
-- `src/__tests__/extension.test.ts` - CLI main class integration
+- `src/__tests__/ccpet.test.ts` - CLI main class integration
 - `src/__tests__/integration/PetIntegration.test.ts` - Cross-component integration
 
 ### Test Coverage Targets

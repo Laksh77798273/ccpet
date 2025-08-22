@@ -9,9 +9,9 @@ class ClaudeCodeStatusLine {
   private formatter: StatusBarFormatter;
   private storage: PetStorage;
 
-  constructor() {
+  constructor(testMode: boolean = false) {
     this.storage = new PetStorage();
-    this.formatter = new StatusBarFormatter();
+    this.formatter = new StatusBarFormatter(testMode);
     
     // Load or create initial pet state
     const savedState = this.storage.loadState();
@@ -19,8 +19,11 @@ class ClaudeCodeStatusLine {
       energy: PET_CONFIG.INITIAL_ENERGY,
       expression: PET_CONFIG.HAPPY_EXPRESSION,
       lastFeedTime: new Date(),
-      totalTokensConsumed: 0
+      totalTokensConsumed: 0,
+      accumulatedTokens: 0,
+      totalLifetimeTokens: 0
     };
+
 
     this.pet = new Pet(initialState, { config: PET_CONFIG });
     
@@ -39,14 +42,15 @@ class ClaudeCodeStatusLine {
       const tokenMetrics = await getTokenMetrics(claudeCodeInput.transcript_path);
       
       if (tokenMetrics.totalTokens > 0) {
-        // Convert tokens to energy and feed pet
-        // Use a simple 1:1 ratio for token to energy conversion
-        const energyToAdd = tokenMetrics.totalTokens * 0.1; // 10 tokens = 1 energy
-        this.pet.addEnergy(energyToAdd);
+        // Feed pet with actual tokens (using new accumulation system)
+        this.pet.feed(tokenMetrics.totalTokens);
       }
       
-      // Get current state and format display
+      // Get current state and update with session token info
       const state = this.pet.getState();
+      state.sessionTotalInputTokens = tokenMetrics.sessionTotalInputTokens;
+      state.sessionTotalOutputTokens = tokenMetrics.sessionTotalOutputTokens;
+      state.sessionTotalCachedTokens = tokenMetrics.sessionTotalCachedTokens;
       return this.formatter.formatPetDisplay(state);
     } catch (error) {
       console.error('Token processing failed:', error);
@@ -67,6 +71,25 @@ class ClaudeCodeStatusLine {
 
   public saveState(): void {
     this.storage.saveState(this.pet.getState());
+  }
+
+  public adoptNewPet(): void {
+    if (this.pet.isDead()) {
+      this.pet.resetToInitialState();
+      this.saveState();
+      
+      // Show success notification if VSCode API is available
+      if (typeof window !== 'undefined' && window.vscode) {
+        window.vscode.postMessage({
+          command: 'showInformationMessage',
+          text: 'Successfully adopted a new pet! Your pet is now happy and full of energy.'
+        });
+      }
+    }
+  }
+
+  public isPetDead(): boolean {
+    return this.pet.isDead();
   }
 }
 
@@ -118,6 +141,7 @@ async function main(): Promise<void> {
   try {
     // Read Claude Code JSON input from stdin
     const inputData = await readStdin();
+    // console.log('Input data:', inputData);
     
     if (!inputData) {
       // No input provided - show basic status
@@ -131,6 +155,7 @@ async function main(): Promise<void> {
     let claudeCodeInput: ClaudeCodeStatusInput;
     try {
       claudeCodeInput = JSON.parse(inputData);
+      // console.log('Claude Code input:', claudeCodeInput)
     } catch (error) {
       // Invalid JSON - show basic status
       const statusLine = new ClaudeCodeStatusLine();
@@ -154,7 +179,34 @@ async function main(): Promise<void> {
   }
 }
 
-// Run if this is the main module
+// VSCode Extension Activation (if running in VSCode environment)
+export function activate(context: any) {
+  const statusLine = new ClaudeCodeStatusLine();
+
+  // Register the adoptNewPet command
+  const adoptNewPetCommand = context.subscriptions.push(
+    {
+      command: 'claude-pet.adoptNewPet',
+      callback: () => {
+        statusLine.adoptNewPet();
+      }
+    }
+  );
+
+  // Register command with VSCode if vscode API is available
+  if (typeof window !== 'undefined' && window.vscode) {
+    window.vscode.commands.registerCommand('claude-pet.adoptNewPet', () => {
+      statusLine.adoptNewPet();
+    });
+  }
+}
+
+// VSCode Extension Deactivation
+export function deactivate() {
+  // Clean up if needed
+}
+
+// Run if this is the main module (CLI mode)
 if (require.main === module) {
   main();
 }

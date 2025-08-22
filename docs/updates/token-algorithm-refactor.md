@@ -30,7 +30,7 @@
 - Claude Code JSON输入接口
 
 ### 修改的组件
-- `src/extension.ts` - 主要重构
+- `src/ccpet.ts` - 主要重构
   - 从命令行参数改为stdin输入
   - 集成JSONL处理
   - 简化错误处理

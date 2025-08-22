@@ -378,8 +378,8 @@ export class ContrastSupport {
     const filledBars = Math.floor((energy / 100) * totalBars);
     const resolvedTheme = theme === 'auto' ? this._detectTheme() : theme;
     
-    let filledChar = '█';
-    let emptyChar = '░';
+    let filledChar = '●';
+    let emptyChar = '○';
     
     switch (resolvedTheme) {
       case 'high-contrast':
@@ -387,13 +387,13 @@ export class ContrastSupport {
         emptyChar = '□';
         break;
       case 'dark':
-        filledChar = '█';
+        filledChar = '●';
         emptyChar = '▒'; // Slightly different for better dark theme visibility
         break;
       case 'light':
       default:
-        filledChar = '█';
-        emptyChar = '░';
+        filledChar = '●';
+        emptyChar = '○';
         break;
     }
     

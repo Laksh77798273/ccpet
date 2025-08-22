@@ -5,7 +5,12 @@ export interface IPetState {
   expression: string;
   lastFeedTime: Date;
   totalTokensConsumed: number;
+  accumulatedTokens: number; // 当前累积的token数（用于下次能量增加）
+  totalLifetimeTokens: number; // 宠物诞生以来消耗的总token数（用于排名和升级）
   lastDecayTime?: Date; // 上次计算衰减的时间
+  sessionTotalInputTokens?: number; // 当前会话总输入token
+  sessionTotalOutputTokens?: number; // 当前会话总输出token
+  sessionTotalCachedTokens?: number; // 当前会话总缓存token
 }
 
 interface IPetDependencies {
@@ -40,12 +45,29 @@ export class Pet {
 
   public feed(tokens: number): void {
     try {
-      this.addEnergy(tokens * 10);
+      // 累积新的token
+      const newAccumulatedTokens = this.state.accumulatedTokens + tokens;
+      
+      // 计算能获得多少完整的能量点
+      const { TOKENS_PER_ENERGY } = this.deps.config.FEEDING;
+      const energyToAdd = Math.floor(newAccumulatedTokens / TOKENS_PER_ENERGY);
+      
+      // 计算剩余的累积token (未达到下一个能量点的部分)
+      const remainingTokens = newAccumulatedTokens % TOKENS_PER_ENERGY;
+      
+      // 更新状态
       this.state = {
         ...this.state,
+        accumulatedTokens: remainingTokens, // 保留未能转换为能量的token
         lastFeedTime: new Date(),
-        totalTokensConsumed: this.state.totalTokensConsumed + tokens
+        totalTokensConsumed: this.state.totalTokensConsumed + tokens,
+        totalLifetimeTokens: this.state.totalLifetimeTokens + tokens
       };
+      
+      // 如果有完整的能量点要增加
+      if (energyToAdd > 0) {
+        this.addEnergy(energyToAdd);
+      }
     } catch (error) {
       console.error('Pet feeding failed:', error);
     }
@@ -54,19 +76,31 @@ export class Pet {
   public applyTimeDecay(): void {
     try {
       const now = new Date();
-      // 使用lastDecayTime来计算衰减，如果不存在则使用lastFeedTime
+      const { TIME_DECAY } = this.deps.config;
+      
+      // Use lastDecayTime to calculate decay, if not exists use lastFeedTime
       const lastTime = this.state.lastDecayTime || this.state.lastFeedTime;
       const minutesSinceLastDecay = 
         (now.getTime() - lastTime.getTime()) / (1000 * 60);
       
       if (minutesSinceLastDecay > 0) {
-        // 3天(4320分钟)内从100到0，每分钟减少约0.0231点能量
-        const ENERGY_DECAY_PER_MINUTE = 100 / (3 * 24 * 60); // ≈ 0.0231
+        // Enhanced configurable decay system - use TIME_DECAY settings if available
+        // Fallback to original 3-day decay system for backward compatibility
+        const ENERGY_DECAY_PER_MINUTE = TIME_DECAY ? 
+          (TIME_DECAY.DECAY_RATE / (TIME_DECAY.DECAY_CHECK_INTERVAL / (1000 * 60))) : // New: configurable rate per minute
+          (100 / (3 * 24 * 60)); // Original: 3 days from 100 to 0, ≈ 0.0231 per minute
+        
         const energyDecay = minutesSinceLastDecay * ENERGY_DECAY_PER_MINUTE;
         
-        if (energyDecay > 0) {
+        // Apply minimum decay interval check if configured
+        const minimumMinutes = TIME_DECAY ? 
+          (TIME_DECAY.MINIMUM_DECAY_INTERVAL / (1000 * 60)) : 
+          0; // Original had no minimum interval
+        
+        if (energyDecay > 0 && minutesSinceLastDecay >= minimumMinutes) {
           this.decreaseEnergy(energyDecay);
-          // 更新lastDecayTime但保持lastFeedTime不变
+          
+          // Update lastDecayTime but keep lastFeedTime unchanged
           this.state = {
             ...this.state,
             lastDecayTime: now
@@ -75,6 +109,7 @@ export class Pet {
       }
     } catch (error) {
       console.error('Pet time decay failed:', error);
+      // Graceful fallback - skip decay for current execution
     }
   }
 
@@ -119,6 +154,33 @@ export class Pet {
 
   public getCurrentEnergy(): number {
     return this.state.energy;
+  }
+
+  public isDead(): boolean {
+    return this.state.energy === 0;
+  }
+
+  public resetToInitialState(): void {
+    try {
+      const now = new Date();
+      this.state = {
+        energy: this.deps.config.INITIAL_ENERGY,
+        expression: this.deps.config.STATE_EXPRESSIONS.HAPPY,
+        lastFeedTime: now,
+        totalTokensConsumed: 0,
+        accumulatedTokens: 0,
+        totalLifetimeTokens: this.state.totalLifetimeTokens, // 保留终身token计数，不重置
+        lastDecayTime: now,
+        sessionTotalInputTokens: 0,
+        sessionTotalOutputTokens: 0,
+        sessionTotalCachedTokens: 0
+      };
+      this._updateExpression();
+      this._notify();
+    } catch (error) {
+      console.error('Pet resetToInitialState failed:', error);
+      throw error;
+    }
   }
 
   private _updateExpression(): void {

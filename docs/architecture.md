@@ -48,10 +48,10 @@ ccpet/
 │   │   └── __tests__/
 │   │       └── StatusBar.test.ts
 │   ├── __tests__/         # 集成测试
-│   │   ├── extension.test.ts
+│   │   ├── ccpet.test.ts
 │   │   ├── integration/
 │   │   └── setup.ts
-│   └── extension.ts       # CLI 脚本的主入口文件
+│   └── ccpet.ts       # CLI 脚本的主入口文件
 ├── docs/                  # 项目文档
 ├── .gitignore
 ├── .prettierrc.json       # Prettier 配置文件
@@ -235,13 +235,33 @@ describe('Pet Core Logic', () => {
 
 ```typescript
 // src/core/config.ts
-export const config = {
-  ENERGY_DECAY_RATE: 5,
-  DECAY_INTERVAL_MS: 60 * 60 * 1000,
-  FEED_VALUE_PER_TOKEN: 0.1,
-  STATE_THRESHOLDS: { HUNGRY: 40, SICK: 10, HAPPY: 80 },
+export const PET_CONFIG = {
+  INITIAL_ENERGY: 100,
+  ENERGY_BAR_LENGTH: 10,
   STATUS_BAR_PRIORITY: 100,
-};
+  FILLED_BAR_CHAR: '●',
+  EMPTY_BAR_CHAR: '○',
+  STATE_THRESHOLDS: {
+    HAPPY: 80,
+    HUNGRY: 40,
+    SICK: 10,
+    DEAD: 0
+  },
+  STATE_EXPRESSIONS: {
+    HAPPY: '(^_^)',
+    HUNGRY: '(o_o)',
+    SICK: '(u_u)',
+    DEAD: '(x_x)'
+  },
+  TIME_DECAY: {
+    DECAY_CHECK_INTERVAL: 60000, // 1 minute in milliseconds
+    DECAY_RATE: 0.0231, // energy points to decrease per minute
+    MINIMUM_DECAY_INTERVAL: 60000 // minimum 1 minute before first decay can occur
+  },
+  FEEDING: {
+    TOKENS_PER_ENERGY: 1000000 // 1M tokens = 1 energy point
+  }
+} as const;
 ```
 
 ## **11. 错误处理与韧性 (Error Handling & Resilience)**
@@ -2000,8 +2020,8 @@ export class EnvironmentConfigManager {
     "version:major": "npm version major",
     "prebuild": "npm run clean && npm run lint && npm run test",
     "build": "npm run build:production",
-    "build:development": "NODE_ENV=development esbuild src/extension.ts --bundle --outdir=dist --platform=node --target=node20 --sourcemap",
-    "build:production": "NODE_ENV=production esbuild src/extension.ts --bundle --outdir=dist --platform=node --target=node20 --minify",
+    "build:development": "NODE_ENV=development esbuild src/ccpet.ts --bundle --outdir=dist --platform=node --target=node20 --sourcemap",
+    "build:production": "NODE_ENV=production esbuild src/ccpet.ts --bundle --outdir=dist --platform=node --target=node20 --minify",
     "package": "vsce package",
     "publish:marketplace": "vsce publish",
     "publish:github": "gh release create v$(node -p 'require(\"./package.json\").version') --generate-notes",
@@ -2357,8 +2377,8 @@ export class ContrastSupport {
     const totalBars = 10;
     const filledBars = Math.floor((energy / 100) * totalBars);
     
-    let filledChar = '█';
-    let emptyChar = '░';
+    let filledChar = '●';
+    let emptyChar = '○';
     
     if (theme === 'high-contrast') {
       filledChar = '■';

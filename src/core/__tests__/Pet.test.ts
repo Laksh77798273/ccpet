@@ -10,7 +10,8 @@ describe('Pet Core Logic', () => {
     energy: 50,
     expression: '(o_o)',
     lastFeedTime: new Date('2024-01-01T00:00:00Z'),
-    totalTokensConsumed: 0
+    totalTokensConsumed: 0,
+    accumulatedTokens: 0
   });
 
   describe('constructor and getState', () => {
@@ -41,11 +42,11 @@ describe('Pet Core Logic', () => {
       const observer = vi.fn();
 
       pet.subscribe(observer);
-      pet.feed(1);
+      pet.feed(1000000); // 1M tokens to trigger energy change
 
       expect(observer).toHaveBeenCalledWith(
         expect.objectContaining({
-          energy: 60
+          energy: 51 // 50 + 1 energy from 1M tokens
         })
       );
     });
@@ -73,28 +74,52 @@ describe('Pet Core Logic', () => {
       pet.subscribe(errorObserver);
       pet.subscribe(normalObserver);
       
-      expect(() => pet.feed(1)).not.toThrow();
+      expect(() => pet.feed(1000000)).not.toThrow(); // 1M tokens to trigger energy change
       expect(normalObserver).toHaveBeenCalled();
     });
   });
 
   describe('feed method', () => {
-    it('should increase energy when fed', () => {
+    it('should accumulate tokens without increasing energy when below threshold', () => {
       const initialState = createInitialState();
       const pet = new Pet(initialState, mockDependencies);
       
-      pet.feed(1);
+      pet.feed(1000);
       const newState = pet.getState();
       
-      expect(newState.energy).toBe(60);
-      expect(newState.totalTokensConsumed).toBe(1);
+      expect(newState.energy).toBe(50); // No energy increase
+      expect(newState.totalTokensConsumed).toBe(1000);
+      expect(newState.accumulatedTokens).toBe(1000);
+    });
+
+    it('should increase energy when token threshold is reached', () => {
+      const initialState = createInitialState();
+      const pet = new Pet(initialState, mockDependencies);
+      
+      pet.feed(1000000); // Exactly 1M tokens = 1 energy
+      const newState = pet.getState();
+      
+      expect(newState.energy).toBe(51); // 50 + 1
+      expect(newState.totalTokensConsumed).toBe(1000000);
+      expect(newState.accumulatedTokens).toBe(0); // Reset after conversion
+    });
+
+    it('should handle partial token conversion', () => {
+      const initialState = { ...createInitialState(), accumulatedTokens: 999500 };
+      const pet = new Pet(initialState, mockDependencies);
+      
+      pet.feed(1000); // 999500 + 1000 = 1000500, should convert 1M and keep 500
+      const newState = pet.getState();
+      
+      expect(newState.energy).toBe(51); // 50 + 1
+      expect(newState.accumulatedTokens).toBe(500); // Remaining tokens
     });
 
     it('should cap energy at 100', () => {
-      const initialState = { ...createInitialState(), energy: 95 };
+      const initialState = { ...createInitialState(), energy: 99.5 };
       const pet = new Pet(initialState, mockDependencies);
       
-      pet.feed(2);
+      pet.feed(2000000); // 2M tokens = 2 energy, but should cap at 100
       const newState = pet.getState();
       
       expect(newState.energy).toBe(100);
@@ -113,14 +138,14 @@ describe('Pet Core Logic', () => {
       expect(newState.lastFeedTime.getTime()).toBeLessThanOrEqual(afterTime);
     });
 
-    it('should update expression based on energy level', () => {
-      const initialState = { ...createInitialState(), energy: 70 };
+    it('should update expression based on energy level when threshold reached', () => {
+      const initialState = { ...createInitialState(), energy: 79 };
       const pet = new Pet(initialState, mockDependencies);
       
-      pet.feed(2);
+      pet.feed(1000000); // +1 energy: 79 + 1 = 80 (happy threshold)
       const newState = pet.getState();
       
-      expect(newState.energy).toBe(90);
+      expect(newState.energy).toBe(80);
       expect(newState.expression).toBe('(^_^)');
     });
 
@@ -146,47 +171,181 @@ describe('Pet Core Logic', () => {
   });
 
   describe('applyTimeDecay method', () => {
-    it('should reduce energy based on minutes since last feed', () => {
-      const oneHourAgo = new Date(Date.now() - (60 * 60 * 1000));
-      const initialState = { ...createInitialState(), lastFeedTime: oneHourAgo };
-      const pet = new Pet(initialState, mockDependencies);
-      
-      pet.applyTimeDecay();
-      const newState = pet.getState();
-      
-      // 1小时(60分钟) * (100/(3*24*60)) ≈ 1.39点衰减
-      // 50 - 1.39 ≈ 48.61
-      expect(newState.energy).toBeCloseTo(48.61, 1);
+    describe('enhanced configurable decay system', () => {
+      it('should apply decay based on configurable rate per minute', () => {
+        const oneHourAgo = new Date(Date.now() - (60 * 60 * 1000)); // 1 hour = 60 minutes
+        const initialState = { ...createInitialState(), energy: 50, lastFeedTime: oneHourAgo };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.applyTimeDecay();
+        const newState = pet.getState();
+        
+        // 60 minutes * 0.0231 energy/minute = 1.386 energy decay
+        // 50 - 1.386 ≈ 48.614
+        expect(newState.energy).toBeCloseTo(48.61, 1);
+      });
+
+      it('should apply decay for multiple hours', () => {
+        const threeHoursAgo = new Date(Date.now() - (3 * 60 * 60 * 1000)); // 3 hours = 180 minutes
+        const initialState = { ...createInitialState(), energy: 50, lastFeedTime: threeHoursAgo };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.applyTimeDecay();
+        const newState = pet.getState();
+        
+        // 180 minutes * 0.0231 = 4.158 energy decay
+        // 50 - 4.158 = 45.842
+        expect(newState.energy).toBeCloseTo(45.84, 1);
+      });
+
+      it('should not apply decay if minimum interval not reached', () => {
+        const thirtySecondsAgo = new Date(Date.now() - (30 * 1000)); // 30 seconds < 1 minute minimum
+        const initialState = { ...createInitialState(), energy: 50, lastFeedTime: thirtySecondsAgo };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.applyTimeDecay();
+        const newState = pet.getState();
+        
+        // Should not decay - below minimum interval
+        expect(newState.energy).toBe(50);
+      });
+
+      it('should apply decay when minimum interval is reached', () => {
+        const tenMinutesAgo = new Date(Date.now() - (10 * 60 * 1000)); // 10 minutes > 1 minute minimum
+        const initialState = { ...createInitialState(), energy: 50, lastFeedTime: tenMinutesAgo };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.applyTimeDecay();
+        const newState = pet.getState();
+        
+        // 10 minutes * 0.0231 = 0.231 energy decay
+        // 50 - 0.231 = 49.769
+        expect(newState.energy).toBeCloseTo(49.77, 1);
+      });
+
+      it('should use lastDecayTime if available instead of lastFeedTime', () => {
+        const twoHoursAgo = new Date(Date.now() - (2 * 60 * 60 * 1000));
+        const oneHourAgo = new Date(Date.now() - (60 * 60 * 1000));
+        const initialState = { 
+          ...createInitialState(), 
+          energy: 50, 
+          lastFeedTime: twoHoursAgo,
+          lastDecayTime: oneHourAgo 
+        };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.applyTimeDecay();
+        const newState = pet.getState();
+        
+        // Should use lastDecayTime (1 hour ago), not lastFeedTime (2 hours ago)
+        // 60 minutes * 0.0231 = 1.386 energy decay
+        expect(newState.energy).toBeCloseTo(48.61, 1);
+      });
+
+      it('should update lastDecayTime after applying decay', () => {
+        const oneHourAgo = new Date(Date.now() - (60 * 60 * 1000));
+        const initialState = { ...createInitialState(), energy: 50, lastFeedTime: oneHourAgo };
+        const pet = new Pet(initialState, mockDependencies);
+        const beforeDecay = Date.now();
+        
+        pet.applyTimeDecay();
+        const newState = pet.getState();
+        const afterDecay = Date.now();
+        
+        expect(newState.lastDecayTime).toBeDefined();
+        expect(newState.lastDecayTime!.getTime()).toBeGreaterThanOrEqual(beforeDecay);
+        expect(newState.lastDecayTime!.getTime()).toBeLessThanOrEqual(afterDecay);
+      });
     });
 
-    it('should not reduce energy below 0', () => {
-      const tenHoursAgo = new Date(Date.now() - (10 * 60 * 60 * 1000));
-      const initialState = { ...createInitialState(), energy: 10, lastFeedTime: tenHoursAgo };
-      const pet = new Pet(initialState, mockDependencies);
-      
-      pet.applyTimeDecay();
-      const newState = pet.getState();
-      
-      expect(newState.energy).toBe(0);
+    describe('energy bounds validation', () => {
+      it('should not reduce energy below 0', () => {
+        const tenHoursAgo = new Date(Date.now() - (10 * 60 * 60 * 1000)); // 10 hours = 600 minutes
+        const initialState = { ...createInitialState(), energy: 5, lastFeedTime: tenHoursAgo };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.applyTimeDecay();
+        const newState = pet.getState();
+        
+        // 600 minutes * 0.0231 = 13.86 energy decay, but energy can't go below 0
+        expect(newState.energy).toBe(0);
+      });
+
+      it('should handle edge case where decay equals current energy', () => {
+        const oneHourAgo = new Date(Date.now() - (60 * 60 * 1000)); // 1 hour
+        const initialState = { ...createInitialState(), energy: 1.386, lastFeedTime: oneHourAgo };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.applyTimeDecay();
+        const newState = pet.getState();
+        
+        // 60 minutes * 0.0231 = 1.386 energy decay, should go to 0
+        expect(newState.energy).toBe(0);
+      });
     });
 
-    it('should not change energy if no time has passed', () => {
-      const initialState = { ...createInitialState(), lastFeedTime: new Date() };
-      const pet = new Pet(initialState, mockDependencies);
-      
-      pet.applyTimeDecay();
-      const newState = pet.getState();
-      
-      expect(newState.energy).toBe(50);
+    describe('error handling', () => {
+      it('should handle invalid time calculations gracefully', () => {
+        const initialState = { ...createInitialState(), lastFeedTime: new Date('invalid') };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        expect(() => pet.applyTimeDecay()).not.toThrow();
+      });
+
+      it('should handle negative time differences gracefully', () => {
+        const futureTime = new Date(Date.now() + (60 * 60 * 1000)); // 1 hour in future
+        const initialState = { ...createInitialState(), energy: 50, lastFeedTime: futureTime };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.applyTimeDecay();
+        const newState = pet.getState();
+        
+        // No decay should be applied for negative time differences
+        expect(newState.energy).toBe(50);
+      });
+
+      it('should skip decay when time decay fails', () => {
+        const initialState = { ...createInitialState(), lastFeedTime: null as any };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        expect(() => pet.applyTimeDecay()).not.toThrow();
+        expect(pet.getState().energy).toBe(50); // No change in energy
+      });
     });
 
-    it('should log errors when time decay fails', () => {
-      // Create a pet with invalid lastFeedTime to trigger error
-      const initialState = { ...createInitialState(), lastFeedTime: 'invalid' as any };
-      const pet = new Pet(initialState, mockDependencies);
-      
-      // Error is handled gracefully, no exception thrown
-      expect(() => pet.applyTimeDecay()).not.toThrow();
+    describe('integration with decreaseEnergy method', () => {
+      it('should call decreaseEnergy method for energy reduction', () => {
+        const oneHourAgo = new Date(Date.now() - (60 * 60 * 1000));
+        const initialState = { ...createInitialState(), energy: 50, lastFeedTime: oneHourAgo };
+        const pet = new Pet(initialState, mockDependencies);
+        const observer = vi.fn();
+        
+        pet.subscribe(observer);
+        pet.applyTimeDecay();
+        
+        // Should notify observers through decreaseEnergy method
+        expect(observer).toHaveBeenCalledWith(
+          expect.objectContaining({ energy: expect.closeTo(48.61, 1) })
+        );
+      });
+
+      it('should trigger expression updates through decreaseEnergy', () => {
+        const twoHoursAgo = new Date(Date.now() - (2 * 60 * 60 * 1000));
+        const initialState = { 
+          ...createInitialState(), 
+          energy: 50, // hungry state
+          lastFeedTime: twoHoursAgo 
+        };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.applyTimeDecay();
+        const newState = pet.getState();
+        
+        // 120 minutes * 0.0231 = 2.772 energy decay: 50 - 2.772 = 47.228
+        // Energy 47.228 is above HUNGRY threshold (40), should still be hungry
+        expect(newState.energy).toBeCloseTo(47.23, 1);
+        expect(newState.expression).toBe('(o_o)');
+      });
     });
   });
 
@@ -409,16 +568,193 @@ describe('Pet Core Logic', () => {
     });
   });
 
+  describe('pet death and resurrection', () => {
+    describe('isDead', () => {
+      it('should return true when energy is exactly 0', () => {
+        const initialState = { ...createInitialState(), energy: 0 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        expect(pet.isDead()).toBe(true);
+      });
+
+      it('should return false when energy is greater than 0', () => {
+        const initialState = { ...createInitialState(), energy: 1 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        expect(pet.isDead()).toBe(false);
+      });
+
+      it('should return false for high energy values', () => {
+        const initialState = { ...createInitialState(), energy: 100 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        expect(pet.isDead()).toBe(false);
+      });
+
+      it('should correctly reflect death after energy decreases to 0', () => {
+        const initialState = { ...createInitialState(), energy: 5 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        expect(pet.isDead()).toBe(false);
+        
+        pet.decreaseEnergy(10); // More than current energy, should go to 0
+        expect(pet.isDead()).toBe(true);
+      });
+    });
+
+    describe('resetToInitialState', () => {
+      it('should reset energy to INITIAL_ENERGY', () => {
+        const initialState = { ...createInitialState(), energy: 0 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.resetToInitialState();
+        const state = pet.getState();
+        
+        expect(state.energy).toBe(PET_CONFIG.INITIAL_ENERGY);
+      });
+
+      it('should reset expression to HAPPY', () => {
+        const initialState = { ...createInitialState(), energy: 0, expression: '(x_x)' };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.resetToInitialState();
+        const state = pet.getState();
+        
+        expect(state.expression).toBe(PET_CONFIG.STATE_EXPRESSIONS.HAPPY);
+      });
+
+      it('should reset totalTokensConsumed to 0', () => {
+        const initialState = { ...createInitialState(), totalTokensConsumed: 5000000 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.resetToInitialState();
+        const state = pet.getState();
+        
+        expect(state.totalTokensConsumed).toBe(0);
+      });
+
+      it('should reset accumulatedTokens to 0', () => {
+        const initialState = { ...createInitialState(), accumulatedTokens: 999999 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.resetToInitialState();
+        const state = pet.getState();
+        
+        expect(state.accumulatedTokens).toBe(0);
+      });
+
+      it('should reset session token counts to 0', () => {
+        const initialState = { 
+          ...createInitialState(),
+          sessionTotalInputTokens: 1000,
+          sessionTotalOutputTokens: 2000,
+          sessionTotalCachedTokens: 500
+        };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.resetToInitialState();
+        const state = pet.getState();
+        
+        expect(state.sessionTotalInputTokens).toBe(0);
+        expect(state.sessionTotalOutputTokens).toBe(0);
+        expect(state.sessionTotalCachedTokens).toBe(0);
+      });
+
+      it('should update lastFeedTime to current time', () => {
+        const oldTime = new Date('2024-01-01T00:00:00Z');
+        const initialState = { ...createInitialState(), lastFeedTime: oldTime };
+        const pet = new Pet(initialState, mockDependencies);
+        const beforeReset = Date.now();
+        
+        pet.resetToInitialState();
+        const state = pet.getState();
+        const afterReset = Date.now();
+        
+        expect(state.lastFeedTime.getTime()).toBeGreaterThanOrEqual(beforeReset);
+        expect(state.lastFeedTime.getTime()).toBeLessThanOrEqual(afterReset);
+      });
+
+      it('should update lastDecayTime to current time', () => {
+        const oldTime = new Date('2024-01-01T00:00:00Z');
+        const initialState = { ...createInitialState(), lastDecayTime: oldTime };
+        const pet = new Pet(initialState, mockDependencies);
+        const beforeReset = Date.now();
+        
+        pet.resetToInitialState();
+        const state = pet.getState();
+        const afterReset = Date.now();
+        
+        expect(state.lastDecayTime).toBeDefined();
+        expect(state.lastDecayTime!.getTime()).toBeGreaterThanOrEqual(beforeReset);
+        expect(state.lastDecayTime!.getTime()).toBeLessThanOrEqual(afterReset);
+      });
+
+      it('should notify observers after reset', () => {
+        const initialState = { ...createInitialState(), energy: 0 };
+        const pet = new Pet(initialState, mockDependencies);
+        const observer = vi.fn();
+        
+        pet.subscribe(observer);
+        pet.resetToInitialState();
+        
+        expect(observer).toHaveBeenCalledWith(
+          expect.objectContaining({
+            energy: PET_CONFIG.INITIAL_ENERGY,
+            expression: PET_CONFIG.STATE_EXPRESSIONS.HAPPY,
+            totalTokensConsumed: 0,
+            accumulatedTokens: 0
+          })
+        );
+      });
+
+      it('should call _updateExpression after reset', () => {
+        // This is implicitly tested by checking the expression is happy
+        const initialState = { ...createInitialState(), energy: 0, expression: '(x_x)' };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.resetToInitialState();
+        const state = pet.getState();
+        
+        // Expression should be updated based on the new energy level (100 = happy)
+        expect(state.expression).toBe(PET_CONFIG.STATE_EXPRESSIONS.HAPPY);
+      });
+
+      it('should handle errors gracefully', () => {
+        const initialState = createInitialState();
+        const pet = new Pet(initialState, mockDependencies);
+        
+        // Mock an error in the dependencies to trigger error handling
+        const invalidDependencies = { config: null as any };
+        const petWithError = new Pet(initialState, invalidDependencies);
+        
+        expect(() => petWithError.resetToInitialState()).toThrow();
+      });
+
+      it('should reset pet from dead state to alive', () => {
+        const initialState = { ...createInitialState(), energy: 0 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        expect(pet.isDead()).toBe(true);
+        
+        pet.resetToInitialState();
+        
+        expect(pet.isDead()).toBe(false);
+        expect(pet.getCurrentEnergy()).toBe(PET_CONFIG.INITIAL_ENERGY);
+      });
+    });
+  });
+
   describe('integration with existing methods', () => {
-    it('should use addEnergy in feed method', () => {
+    it('should use addEnergy in feed method when threshold reached', () => {
       const initialState = { ...createInitialState(), energy: 50 };
       const pet = new Pet(initialState, mockDependencies);
       
-      pet.feed(2);
+      pet.feed(1000000); // 1M tokens = 1 energy
       const state = pet.getState();
       
-      expect(state.energy).toBe(70);
-      expect(state.totalTokensConsumed).toBe(2);
+      expect(state.energy).toBe(51);
+      expect(state.totalTokensConsumed).toBe(1000000);
+      expect(state.accumulatedTokens).toBe(0);
     });
 
     it('should use decreaseEnergy in applyTimeDecay method', () => {
@@ -429,9 +765,9 @@ describe('Pet Core Logic', () => {
       pet.applyTimeDecay();
       const state = pet.getState();
       
-      // 2小时(120分钟) * (100/(3*24*60)) ≈ 2.78点衰减  
-      // 50 - 2.78 ≈ 47.22
-      expect(state.energy).toBeCloseTo(47.22, 1);
+      // 120 minutes * 0.0231 = 2.772 energy decay
+      // 50 - 2.772 = 47.228
+      expect(state.energy).toBeCloseTo(47.23, 1);
     });
   });
 });

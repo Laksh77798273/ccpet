@@ -61,9 +61,9 @@ All dependencies must use exact version numbers to avoid incompatibility risks f
 ```javascript
 // esbuild.config.js
 const buildOptions = {
-  entryPoints: ['src/extension.ts'],
+  entryPoints: ['src/ccpet.ts'],
   bundle: true,
-  outfile: 'dist/extension.js',
+  outfile: 'dist/ccpet.js',
   external: [], // No external dependencies
   format: 'cjs',
   platform: 'node',
