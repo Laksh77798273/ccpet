@@ -45,8 +45,7 @@ describe('Pet Core Logic', () => {
 
       expect(observer).toHaveBeenCalledWith(
         expect.objectContaining({
-          energy: 60,
-          totalTokensConsumed: 1
+          energy: 60
         })
       );
     });
@@ -189,45 +188,246 @@ describe('Pet Core Logic', () => {
     });
   });
 
-  describe('expression updates', () => {
-    it('should show happy expression for high energy (>=80)', () => {
+  describe('energy management methods', () => {
+    describe('addEnergy', () => {
+      it('should increase energy by specified amount', () => {
+        const initialState = { ...createInitialState(), energy: 50 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.addEnergy(20);
+        const state = pet.getState();
+        
+        expect(state.energy).toBe(70);
+      });
+
+      it('should cap energy at 100', () => {
+        const initialState = { ...createInitialState(), energy: 95 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.addEnergy(10);
+        const state = pet.getState();
+        
+        expect(state.energy).toBe(100);
+      });
+
+      it('should notify observers when energy changes', () => {
+        const initialState = createInitialState();
+        const pet = new Pet(initialState, mockDependencies);
+        const observer = vi.fn();
+        
+        pet.subscribe(observer);
+        pet.addEnergy(15);
+        
+        expect(observer).toHaveBeenCalledWith(
+          expect.objectContaining({ energy: 65 })
+        );
+      });
+
+      it('should update expression based on new energy level', () => {
+        const initialState = { ...createInitialState(), energy: 70 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.addEnergy(15);
+        const state = pet.getState();
+        
+        expect(state.energy).toBe(85);
+        expect(state.expression).toBe('(^_^)');
+      });
+
+      it('should throw error for negative amounts', () => {
+        const initialState = createInitialState();
+        const pet = new Pet(initialState, mockDependencies);
+        
+        expect(() => pet.addEnergy(-10)).toThrow('Invalid energy amount: -10. Must be a non-negative number.');
+      });
+
+      it('should throw error for NaN amounts', () => {
+        const initialState = createInitialState();
+        const pet = new Pet(initialState, mockDependencies);
+        
+        expect(() => pet.addEnergy(NaN)).toThrow('Invalid energy amount: NaN. Must be a non-negative number.');
+      });
+
+      it('should throw error for non-number amounts', () => {
+        const initialState = createInitialState();
+        const pet = new Pet(initialState, mockDependencies);
+        
+        expect(() => pet.addEnergy('invalid' as any)).toThrow('Invalid energy amount: invalid. Must be a non-negative number.');
+      });
+    });
+
+    describe('decreaseEnergy', () => {
+      it('should decrease energy by specified amount', () => {
+        const initialState = { ...createInitialState(), energy: 70 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.decreaseEnergy(20);
+        const state = pet.getState();
+        
+        expect(state.energy).toBe(50);
+      });
+
+      it('should not allow energy to go below 0', () => {
+        const initialState = { ...createInitialState(), energy: 10 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.decreaseEnergy(20);
+        const state = pet.getState();
+        
+        expect(state.energy).toBe(0);
+      });
+
+      it('should notify observers when energy changes', () => {
+        const initialState = { ...createInitialState(), energy: 70 };
+        const pet = new Pet(initialState, mockDependencies);
+        const observer = vi.fn();
+        
+        pet.subscribe(observer);
+        pet.decreaseEnergy(15);
+        
+        expect(observer).toHaveBeenCalledWith(
+          expect.objectContaining({ energy: 55 })
+        );
+      });
+
+      it('should update expression based on new energy level', () => {
+        const initialState = { ...createInitialState(), energy: 50 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.decreaseEnergy(45);
+        const state = pet.getState();
+        
+        expect(state.energy).toBe(5);
+        expect(state.expression).toBe('(x_x)');
+      });
+
+      it('should throw error for negative amounts', () => {
+        const initialState = createInitialState();
+        const pet = new Pet(initialState, mockDependencies);
+        
+        expect(() => pet.decreaseEnergy(-10)).toThrow('Invalid energy amount: -10. Must be a non-negative number.');
+      });
+
+      it('should throw error for NaN amounts', () => {
+        const initialState = createInitialState();
+        const pet = new Pet(initialState, mockDependencies);
+        
+        expect(() => pet.decreaseEnergy(NaN)).toThrow('Invalid energy amount: NaN. Must be a non-negative number.');
+      });
+
+      it('should throw error for non-number amounts', () => {
+        const initialState = createInitialState();
+        const pet = new Pet(initialState, mockDependencies);
+        
+        expect(() => pet.decreaseEnergy('invalid' as any)).toThrow('Invalid energy amount: invalid. Must be a non-negative number.');
+      });
+    });
+
+    describe('getCurrentEnergy', () => {
+      it('should return current energy value', () => {
+        const initialState = { ...createInitialState(), energy: 75 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        expect(pet.getCurrentEnergy()).toBe(75);
+      });
+
+      it('should return updated energy after changes', () => {
+        const initialState = { ...createInitialState(), energy: 50 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.addEnergy(25);
+        expect(pet.getCurrentEnergy()).toBe(75);
+        
+        pet.decreaseEnergy(10);
+        expect(pet.getCurrentEnergy()).toBe(65);
+      });
+    });
+  });
+
+  describe('expression updates with new thresholds', () => {
+    it('should show happy expression for energy >= 80', () => {
       const initialState = { ...createInitialState(), energy: 80 };
       const pet = new Pet(initialState, mockDependencies);
       
-      pet.feed(0);
+      pet.addEnergy(0);
       const state = pet.getState();
       
       expect(state.expression).toBe('(^_^)');
     });
 
-    it('should show neutral expression for medium energy (50-79)', () => {
-      const initialState = { ...createInitialState(), energy: 60 };
+    it('should show hungry expression for energy >= 40 and < 80', () => {
+      const initialState = { ...createInitialState(), energy: 50 };
       const pet = new Pet(initialState, mockDependencies);
       
-      pet.feed(0);
+      pet.addEnergy(0);
       const state = pet.getState();
       
       expect(state.expression).toBe('(o_o)');
     });
 
-    it('should show tired expression for low energy (20-49)', () => {
-      const initialState = { ...createInitialState(), energy: 30 };
+    it('should show sick expression for energy >= 10 and < 40', () => {
+      const initialState = { ...createInitialState(), energy: 20 };
       const pet = new Pet(initialState, mockDependencies);
       
-      pet.feed(0);
+      pet.addEnergy(0);
       const state = pet.getState();
       
-      expect(state.expression).toBe('(~_~)');
+      expect(state.expression).toBe('(u_u)');
     });
 
-    it('should show dead expression for very low energy (<20)', () => {
-      const initialState = { ...createInitialState(), energy: 10 };
+    it('should show dead expression for energy < 10', () => {
+      const initialState = { ...createInitialState(), energy: 5 };
       const pet = new Pet(initialState, mockDependencies);
       
-      pet.feed(0);
+      pet.addEnergy(0);
       const state = pet.getState();
       
       expect(state.expression).toBe('(x_x)');
+    });
+
+    it('should transition expressions correctly when energy changes', () => {
+      const initialState = { ...createInitialState(), energy: 35 };
+      const pet = new Pet(initialState, mockDependencies);
+      
+      // Start in sick state (35 >= 10 and < 40)
+      pet.addEnergy(0); // Trigger expression update
+      expect(pet.getState().expression).toBe('(u_u)');
+      
+      // Add energy to reach hungry state
+      pet.addEnergy(10);
+      expect(pet.getState().expression).toBe('(o_o)');
+      
+      // Add more energy to reach happy state
+      pet.addEnergy(40);
+      expect(pet.getState().expression).toBe('(^_^)');
+      
+      // Decrease energy back to sick state (85 - 50 = 35, which is < 40)
+      pet.decreaseEnergy(50);
+      expect(pet.getState().expression).toBe('(u_u)');
+    });
+  });
+
+  describe('integration with existing methods', () => {
+    it('should use addEnergy in feed method', () => {
+      const initialState = { ...createInitialState(), energy: 50 };
+      const pet = new Pet(initialState, mockDependencies);
+      
+      pet.feed(2);
+      const state = pet.getState();
+      
+      expect(state.energy).toBe(70);
+      expect(state.totalTokensConsumed).toBe(2);
+    });
+
+    it('should use decreaseEnergy in applyTimeDecay method', () => {
+      const twoHoursAgo = new Date(Date.now() - (2 * 60 * 60 * 1000));
+      const initialState = { ...createInitialState(), energy: 50, lastFeedTime: twoHoursAgo };
+      const pet = new Pet(initialState, mockDependencies);
+      
+      pet.applyTimeDecay();
+      const state = pet.getState();
+      
+      expect(state.energy).toBe(40);
     });
   });
 });

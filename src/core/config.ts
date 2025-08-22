@@ -5,7 +5,19 @@ export const PET_CONFIG = {
   ENERGY_BAR_LENGTH: 10,
   STATUS_BAR_PRIORITY: 100,
   FILLED_BAR_CHAR: '█',
-  EMPTY_BAR_CHAR: '░'
+  EMPTY_BAR_CHAR: '░',
+  STATE_THRESHOLDS: {
+    HAPPY: 80,
+    HUNGRY: 40,
+    SICK: 10,
+    DEAD: 0
+  },
+  STATE_EXPRESSIONS: {
+    HAPPY: '(^_^)',
+    HUNGRY: '(o_o)',
+    SICK: '(u_u)',
+    DEAD: '(x_x)'
+  }
 } as const;
 
 export const LOGGER_CONFIG = {

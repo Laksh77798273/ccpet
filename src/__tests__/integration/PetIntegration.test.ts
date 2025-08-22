@@ -84,7 +84,7 @@ describe('Pet Integration Tests', () => {
       const state = pet.getState();
       const display = formatter.formatPetDisplay(state);
 
-      expect(display).toMatch(/\(~_~\) /);
+      expect(display).toMatch(/\(u_u\) /);
     });
   });
 

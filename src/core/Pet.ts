@@ -39,14 +39,12 @@ export class Pet {
 
   public feed(tokens: number): void {
     try {
+      this.addEnergy(tokens * 10);
       this.state = {
         ...this.state,
-        energy: Math.min(100, this.state.energy + (tokens * 10)),
         lastFeedTime: new Date(),
         totalTokensConsumed: this.state.totalTokensConsumed + tokens
       };
-      this._updateExpression();
-      this._notify();
     } catch (error) {
       console.error('Pet feeding failed:', error);
     }
@@ -60,27 +58,64 @@ export class Pet {
       );
       
       if (hoursSinceLastFeed > 0) {
-        this.state = {
-          ...this.state,
-          energy: Math.max(0, this.state.energy - (hoursSinceLastFeed * 5))
-        };
-        this._updateExpression();
-        this._notify();
+        this.decreaseEnergy(hoursSinceLastFeed * 5);
       }
     } catch (error) {
       console.error('Pet time decay failed:', error);
     }
   }
 
+  public addEnergy(amount: number): void {
+    try {
+      if (typeof amount !== 'number' || amount < 0 || isNaN(amount)) {
+        throw new Error(`Invalid energy amount: ${amount}. Must be a non-negative number.`);
+      }
+
+      this.state = {
+        ...this.state,
+        energy: Math.min(100, this.state.energy + amount)
+      };
+      this._updateExpression();
+      this._notify();
+    } catch (error) {
+      console.error('Pet addEnergy failed:', error);
+      throw error;
+    }
+  }
+
+  public decreaseEnergy(amount: number): void {
+    try {
+      if (typeof amount !== 'number' || amount < 0 || isNaN(amount)) {
+        throw new Error(`Invalid energy amount: ${amount}. Must be a non-negative number.`);
+      }
+
+      this.state = {
+        ...this.state,
+        energy: Math.max(0, this.state.energy - amount)
+      };
+      this._updateExpression();
+      this._notify();
+    } catch (error) {
+      console.error('Pet decreaseEnergy failed:', error);
+      throw error;
+    }
+  }
+
+  public getCurrentEnergy(): number {
+    return this.state.energy;
+  }
+
   private _updateExpression(): void {
-    if (this.state.energy >= this.deps.config.HAPPY_EXPRESSION_THRESHOLD) {
-      this.state.expression = this.deps.config.HAPPY_EXPRESSION;
-    } else if (this.state.energy >= 50) {
-      this.state.expression = '(o_o)';
-    } else if (this.state.energy >= 20) {
-      this.state.expression = '(~_~)';
+    const { STATE_THRESHOLDS, STATE_EXPRESSIONS } = this.deps.config;
+    
+    if (this.state.energy >= STATE_THRESHOLDS.HAPPY) {
+      this.state.expression = STATE_EXPRESSIONS.HAPPY;
+    } else if (this.state.energy >= STATE_THRESHOLDS.HUNGRY) {
+      this.state.expression = STATE_EXPRESSIONS.HUNGRY;
+    } else if (this.state.energy >= STATE_THRESHOLDS.SICK) {
+      this.state.expression = STATE_EXPRESSIONS.SICK;
     } else {
-      this.state.expression = '(x_x)';
+      this.state.expression = STATE_EXPRESSIONS.DEAD;
     }
   }
 
