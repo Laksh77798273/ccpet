@@ -111,11 +111,6 @@ jobs:
           git log --pretty=format:"- %s (%h)" ${PREVIOUS_TAG}..${{ steps.get_version.outputs.VERSION }} --no-merges | sed 's/fix:/🐛 Fixed:/g; s/feat:/✨ Added:/g; s/docs:/📚 Documentation:/g; s/test:/🧪 Tests:/g; s/chore:/🔧 Maintenance:/g; s/refactor:/♻️ Refactored:/g; s/perf:/⚡ Performance:/g' >> release_notes.md
           
           echo "" >> release_notes.md
-          echo "### 📦 Installation" >> release_notes.md
-          echo '```bash' >> release_notes.md
-          echo 'npm install -g ccpet' >> release_notes.md
-          echo '```' >> release_notes.md
-          echo "" >> release_notes.md
           echo "### 🚀 Quick Start" >> release_notes.md
           echo 'Add the following to your `~/.claude/settings.json`:' >> release_notes.md
           echo '```json' >> release_notes.md
