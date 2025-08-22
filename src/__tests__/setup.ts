@@ -3,6 +3,8 @@ import { vi } from 'vitest';
 // Globally suppress console.error during tests to avoid noise
 // while still allowing error handling code to execute
 const originalConsoleError = console.error;
+// Keep reference to avoid unused variable error
+void originalConsoleError;
 console.error = vi.fn();
 
 // If you need to see actual errors during debugging, uncomment this:

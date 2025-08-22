@@ -23,7 +23,8 @@ describe('Pet Integration Tests', () => {
     expression: PET_CONFIG.HAPPY_EXPRESSION,
     lastFeedTime: new Date(),
     totalTokensConsumed: 0,
-    accumulatedTokens: 0
+    accumulatedTokens: 0,
+    totalLifetimeTokens: 0
   });
 
   beforeEach(() => {

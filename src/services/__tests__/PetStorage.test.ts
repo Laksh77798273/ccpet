@@ -20,6 +20,8 @@ describe('PetStorage Service', () => {
     expression: '(^_^)',
     lastFeedTime: new Date('2025-08-21T12:00:00.000Z'),
     totalTokensConsumed: 5,
+    accumulatedTokens: 0,
+    totalLifetimeTokens: 5,
     ...overrides
   });
 
@@ -158,7 +160,11 @@ describe('PetStorage Service', () => {
       const storage = new PetStorage();
       const result = storage.loadState();
       
-      expect(result).toEqual(mockState);
+      // Should add totalLifetimeTokens for backward compatibility
+      expect(result).toEqual({
+        ...mockState,
+        totalLifetimeTokens: 5
+      });
     });
   });
 

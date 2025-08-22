@@ -79,7 +79,7 @@ class ClaudeCodeStatusLine {
       this.saveState();
       
       // Show success notification if VSCode API is available
-      if (typeof window !== 'undefined' && window.vscode) {
+      if (typeof window !== 'undefined' && window.vscode?.postMessage) {
         window.vscode.postMessage({
           command: 'showInformationMessage',
           text: 'Successfully adopted a new pet! Your pet is now happy and full of energy.'
@@ -184,7 +184,7 @@ export function activate(context: any) {
   const statusLine = new ClaudeCodeStatusLine();
 
   // Register the adoptNewPet command
-  const adoptNewPetCommand = context.subscriptions.push(
+  context.subscriptions.push(
     {
       command: 'claude-pet.adoptNewPet',
       callback: () => {
@@ -194,7 +194,7 @@ export function activate(context: any) {
   );
 
   // Register command with VSCode if vscode API is available
-  if (typeof window !== 'undefined' && window.vscode) {
+  if (typeof window !== 'undefined' && window.vscode?.commands) {
     window.vscode.commands.registerCommand('claude-pet.adoptNewPet', () => {
       statusLine.adoptNewPet();
     });
