@@ -199,13 +199,13 @@ export class Pet {
 
   // 获取当前状态对应的动画表情（如果支持动画的话）
   public getAnimatedExpression(animationEnabled: boolean = false, frameIndex: number = 0): string {
-    const { STATE_THRESHOLDS, STATE_EXPRESSIONS, ANIMATED_EXPRESSIONS } = this.deps.config;
+    const { STATE_THRESHOLDS, ANIMATED_EXPRESSIONS } = this.deps.config;
     
     if (!animationEnabled || !ANIMATED_EXPRESSIONS) {
       return this.state.expression;
     }
     
-    let animationArray: string[];
+    let animationArray: readonly string[];
     
     if (this.state.energy >= STATE_THRESHOLDS.HAPPY) {
       animationArray = ANIMATED_EXPRESSIONS.HAPPY;
