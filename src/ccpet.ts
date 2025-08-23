@@ -4,12 +4,81 @@ import { PetStorage } from './services/PetStorage';
 import { getTokenMetrics } from './utils/jsonl';
 import { PET_CONFIG } from './core/config';
 
+// Simple animation counter for cycling expressions
+class AnimationCounter {
+  private callCount: number = 0;
+  private readonly testMode: boolean;
+  private readonly COUNTER_FILE = require('path').join(require('os').homedir(), '.claude-pet', 'animation-counter.json');
+
+  constructor(testMode: boolean = false) {
+    this.testMode = testMode;
+    if (!testMode) {
+      this.loadCounter();
+    }
+  }
+
+  private loadCounter(): void {
+    try {
+      const fs = require('fs');
+      if (fs.existsSync(this.COUNTER_FILE)) {
+        const data = JSON.parse(fs.readFileSync(this.COUNTER_FILE, 'utf8'));
+        this.callCount = data.callCount || 0;
+      }
+    } catch (error) {
+      // 忽略加载错误，从0开始
+      this.callCount = 0;
+    }
+  }
+
+  private saveCounter(): void {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      
+      // 确保目录存在
+      const dir = path.dirname(this.COUNTER_FILE);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      
+      const data = {
+        callCount: this.callCount,
+        lastUpdate: Date.now()
+      };
+      fs.writeFileSync(this.COUNTER_FILE, JSON.stringify(data));
+    } catch (error) {
+      // 忽略保存错误
+    }
+  }
+
+  public recordCall(): void {
+    // 在测试模式下不记录调用
+    if (this.testMode) {
+      return;
+    }
+    this.callCount++;
+    this.saveCounter();
+  }
+
+  public shouldEnableAnimation(): boolean {
+    // 在测试模式下禁用动画
+    return !this.testMode;
+  }
+
+  public getFrameIndex(): number {
+    // 基于调用次数返回帧索引，用于动画循环
+    return this.callCount;
+  }
+}
+
 class ClaudeCodeStatusLine {
   private pet: Pet;
   private formatter: StatusBarFormatter;
   private storage: PetStorage;
+  private animationCounter: AnimationCounter;
 
   constructor(testMode: boolean = false) {
+    this.animationCounter = new AnimationCounter(testMode);
     this.storage = new PetStorage();
     this.formatter = new StatusBarFormatter(testMode);
     
@@ -35,6 +104,9 @@ class ClaudeCodeStatusLine {
 
   public async processTokensAndGetStatusDisplay(claudeCodeInput: ClaudeCodeStatusInput): Promise<string> {
     try {
+      // 记录函数调用以更新动画帧
+      this.animationCounter.recordCall();
+      
       // Always apply time decay first
       this.pet.applyTimeDecay();
       
@@ -51,7 +123,17 @@ class ClaudeCodeStatusLine {
       state.sessionTotalInputTokens = tokenMetrics.sessionTotalInputTokens;
       state.sessionTotalOutputTokens = tokenMetrics.sessionTotalOutputTokens;
       state.sessionTotalCachedTokens = tokenMetrics.sessionTotalCachedTokens;
-      return this.formatter.formatPetDisplay(state);
+      
+      // 启用动画并获取当前帧索引
+      const animationEnabled = this.animationCounter.shouldEnableAnimation();
+      const frameIndex = this.animationCounter.getFrameIndex();
+      
+      // 获取动画表情
+      const animatedExpression = this.pet.getAnimatedExpression(animationEnabled, frameIndex);
+      
+      // 显示宠物状态（带动画表情）
+      return this.formatter.formatPetDisplay(state, animatedExpression);
+      
     } catch (error) {
       console.error('Token processing failed:', error);
       // Apply time decay even on error
@@ -63,10 +145,22 @@ class ClaudeCodeStatusLine {
   }
 
   public getStatusDisplay(): string {
+    // 记录函数调用以更新动画帧
+    this.animationCounter.recordCall();
+    
     // Apply time decay before getting display
     this.pet.applyTimeDecay();
     const state = this.pet.getState();
-    return this.formatter.formatPetDisplay(state);
+    
+    // 启用动画并获取当前帧索引
+    const animationEnabled = this.animationCounter.shouldEnableAnimation();
+    const frameIndex = this.animationCounter.getFrameIndex();
+    
+    // 获取动画表情
+    const animatedExpression = this.pet.getAnimatedExpression(animationEnabled, frameIndex);
+    
+    // 显示宠物状态（带动画表情）
+    return this.formatter.formatPetDisplay(state, animatedExpression);
   }
 
   public saveState(): void {

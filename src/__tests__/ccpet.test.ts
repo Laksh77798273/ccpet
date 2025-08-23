@@ -118,7 +118,7 @@ describe('ClaudeCodeStatusLine', () => {
       const statusLine = new ClaudeCodeStatusLine(true);
       const display = statusLine.getStatusDisplay();
       
-      expect(display).toBe('(^_^) ●●●●●●●●●● 100.00 (0)');
+      expect(display).toBe('(^_^) ●●●●●●●●●● 100.00 (0) 💖0');
     });
 
     it('should return display for saved state', () => {
@@ -138,7 +138,7 @@ describe('ClaudeCodeStatusLine', () => {
       const statusLine = new ClaudeCodeStatusLine(true);
       const display = statusLine.getStatusDisplay();
       
-      expect(display).toBe('(o_o) ●●●●●○○○○○ 50.00 (0)');
+      expect(display).toBe('(o_o) ●●●●●○○○○○ 50.00 (0) 💖10');
     });
   });
 
@@ -162,7 +162,7 @@ describe('ClaudeCodeStatusLine', () => {
       const display = await statusLine.processTokensAndGetStatusDisplay(mockClaudeCodeInput);
       
       // Assert - Energy should stay at 30, but accumulated tokens should be 150
-      expect(display).toBe('(o_o) ●●●○○○○○○○ 30.00 (150) In: 100 Out: 50 Cached: 0 Total: 150'); // 30% energy
+      expect(display).toBe('(o_o) ●●●○○○○○○○ 30.00 (150) 💖150 In: 100 Out: 50 Cached: 0 Total: 150'); // 30% energy
     });
 
     it('should handle token processing errors gracefully', async () => {
@@ -186,7 +186,7 @@ describe('ClaudeCodeStatusLine', () => {
       
       // Act & Assert - Should not throw and return current state
       await expect(statusLine.processTokensAndGetStatusDisplay(mockClaudeCodeInput))
-        .resolves.toBe('(^_^) ●●●●●●●●●● 100.00 (0)');
+        .resolves.toBe('(^_^) ●●●●●●●●●● 100.00 (0) 💖0');
     });
 
     it('should not feed pet when no tokens are detected', async () => {
@@ -218,7 +218,7 @@ describe('ClaudeCodeStatusLine', () => {
       const display = await statusLine.processTokensAndGetStatusDisplay(mockClaudeCodeInput);
       
       // Assert - No energy change, no accumulated tokens
-      expect(display).toBe('(o_o) ●●●●●○○○○○ 50.00 (0) In: 0 Out: 0 Cached: 0 Total: 0'); // Still 50% energy
+      expect(display).toBe('(o_o) ●●●●●○○○○○ 50.00 (0) 💖0 In: 0 Out: 0 Cached: 0 Total: 0'); // Still 50% energy
     });
 
     it('should cap energy at 100 when adding tokens', async () => {
@@ -250,7 +250,7 @@ describe('ClaudeCodeStatusLine', () => {
       const display = await statusLine.processTokensAndGetStatusDisplay(mockClaudeCodeInput);
       
       // Assert - Energy should increase to 97 (95 + 2 from 2M tokens), accumulated tokens should be 0
-      expect(display).toBe('(^_^) ●●●●●●●●●● 97.00 (0) In: 1.00M Out: 1.00M Cached: 0 Total: 2.00M'); // 97% energy
+      expect(display).toBe('(^_^) ●●●●●●●●●● 97.00 (0) 💖2.00M In: 1.00M Out: 1.00M Cached: 0 Total: 2.00M'); // 97% energy
     });
   });
 
@@ -330,7 +330,7 @@ describe('ClaudeCodeStatusLine', () => {
         expect(statusLine.isPetDead()).toBe(false);
         // State should remain unchanged
         const display = statusLine.getStatusDisplay();
-        expect(display).toBe('(o_o) ●●●●●○○○○○ 50.00 (500.0K)'); // Still at 50% energy
+        expect(display).toBe('(o_o) ●●●●●○○○○○ 50.00 (500.0K) 💖1.00M'); // Still at 50% energy
       });
 
       it('should save state after successful adoption', () => {
@@ -495,7 +495,7 @@ describe('ClaudeCodeStatusLine', () => {
       const display = await statusLine.processTokensAndGetStatusDisplay(mockClaudeCodeInput);
       
       // Assert - Energy should stay at 40, accumulated tokens should be 100
-      expect(display).toBe('(o_o) ●●●●○○○○○○ 40.00 (100) In: 50 Out: 50 Cached: 0 Total: 100'); // 40% energy
+      expect(display).toBe('(o_o) ●●●●○○○○○○ 40.00 (100) 💖100 In: 50 Out: 50 Cached: 0 Total: 100'); // 40% energy
     });
   });
 });

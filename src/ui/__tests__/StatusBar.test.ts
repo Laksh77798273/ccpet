@@ -9,6 +9,7 @@ describe('StatusBarFormatter Component', () => {
     lastFeedTime: new Date(),
     totalTokensConsumed: 5,
     accumulatedTokens: 0,
+    totalLifetimeTokens: 5,
     ...overrides
   });
 
@@ -33,12 +34,13 @@ describe('StatusBarFormatter Component', () => {
       const testState = createMockPetState({
         expression: '(o_o)',
         energy: 50.25,
-        accumulatedTokens: 1500
+        accumulatedTokens: 1500,
+        totalLifetimeTokens: 1500
       });
 
       const result = formatter.formatPetDisplay(testState);
 
-      expect(result).toBe('(o_o) ●●●●●○○○○○ 50.25 (1.5K)');
+      expect(result).toBe('(o_o) ●●●●●○○○○○ 50.25 (1.5K) 💖1.5K');
     });
 
     it('should handle formatting errors gracefully', () => {
@@ -55,6 +57,7 @@ describe('StatusBarFormatter Component', () => {
         expression: '(^_^)',
         energy: 75,
         accumulatedTokens: 1000,
+        totalLifetimeTokens: 1000,
         sessionTotalInputTokens: 2500,
         sessionTotalOutputTokens: 1500,
         sessionTotalCachedTokens: 500
@@ -62,7 +65,7 @@ describe('StatusBarFormatter Component', () => {
 
       const result = formatter.formatPetDisplay(testState);
 
-      expect(result).toBe('(^_^) ●●●●●●●●○○ 75.00 (1.0K) In: 2.5K Out: 1.5K Cached: 500 Total: 4.5K');
+      expect(result).toBe('(^_^) ●●●●●●●●○○ 75.00 (1.0K) 💖1.0K In: 2.5K Out: 1.5K Cached: 500 Total: 4.5K');
     });
 
     it('should not include session token info when not available', () => {
@@ -70,12 +73,13 @@ describe('StatusBarFormatter Component', () => {
       const testState = createMockPetState({
         expression: '(^_^)',
         energy: 75,
-        accumulatedTokens: 1000
+        accumulatedTokens: 1000,
+        totalLifetimeTokens: 1000
       });
 
       const result = formatter.formatPetDisplay(testState);
 
-      expect(result).toBe('(^_^) ●●●●●●●●○○ 75.00 (1.0K)');
+      expect(result).toBe('(^_^) ●●●●●●●●○○ 75.00 (1.0K) 💖1.0K');
     });
   });
 

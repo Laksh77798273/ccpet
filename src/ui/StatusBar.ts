@@ -8,16 +8,20 @@ export class StatusBarFormatter {
     this.testMode = testMode;
   }
 
-  public formatPetDisplay(state: IPetState): string {
+  public formatPetDisplay(state: IPetState, animatedExpression?: string): string {
     try {
       const energyBar = this.generateEnergyBar(state.energy);
       const energyValue = state.energy.toFixed(2);
       const tokensDisplay = this.formatTokenCount(state.accumulatedTokens);
+      const lifetimeTokensDisplay = this.formatTokenCount(state.totalLifetimeTokens);
       
-      // First line: pet expression, energy bar, energy value, accumulated tokens with colors
+      // 使用动画表情（如果提供的话），否则使用状态中的表情
+      const displayExpression = animatedExpression || state.expression;
+      
+      // First line: pet expression, energy bar, energy value, accumulated tokens, lifetime tokens with colors
       const firstLine = this.testMode ? 
-        `${state.expression} ${energyBar} ${energyValue} (${tokensDisplay})` :
-        `\x1b[1;97m${state.expression}\x1b[0m \x1b[32m${energyBar}\x1b[0m \x1b[34m${energyValue}\x1b[0m \x1b[36m(${tokensDisplay})\x1b[0m`;
+        `${displayExpression} ${energyBar} ${energyValue} (${tokensDisplay}) 💖${lifetimeTokensDisplay}` :
+        `${PET_CONFIG.COLORS.PET_EXPRESSION}${displayExpression}${PET_CONFIG.COLORS.RESET} ${PET_CONFIG.COLORS.ENERGY_BAR}${energyBar}${PET_CONFIG.COLORS.RESET} ${PET_CONFIG.COLORS.ENERGY_VALUE}${energyValue}${PET_CONFIG.COLORS.RESET} ${PET_CONFIG.COLORS.ACCUMULATED_TOKENS}(${tokensDisplay})${PET_CONFIG.COLORS.RESET} ${PET_CONFIG.COLORS.LIFETIME_TOKENS}💖${lifetimeTokensDisplay}${PET_CONFIG.COLORS.RESET}`;
       
       // Second line: session token info if available
       let secondLine = '';
@@ -33,7 +37,7 @@ export class StatusBarFormatter {
         
         secondLine = this.testMode ?
           ` In: ${inTokens} Out: ${outTokens} Cached: ${cachedTokens} Total: ${totalSessionTokens}` :
-          `\n\x1b[32mIn:\x1b[32m ${inTokens}\x1b[0m \x1b[33mOut:\x1b[33m ${outTokens}\x1b[0m \x1b[36mCached:\x1b[36m ${cachedTokens}\x1b[0m \x1b[37mTotal:\x1b[37m ${totalSessionTokens}\x1b[0m`;
+          `\n${PET_CONFIG.COLORS.SESSION_INPUT}In:${PET_CONFIG.COLORS.SESSION_INPUT} ${inTokens}${PET_CONFIG.COLORS.RESET} ${PET_CONFIG.COLORS.SESSION_OUTPUT}Out:${PET_CONFIG.COLORS.SESSION_OUTPUT} ${outTokens}${PET_CONFIG.COLORS.RESET} ${PET_CONFIG.COLORS.SESSION_CACHED}Cached:${PET_CONFIG.COLORS.SESSION_CACHED} ${cachedTokens}${PET_CONFIG.COLORS.RESET} ${PET_CONFIG.COLORS.SESSION_TOTAL}Total:${PET_CONFIG.COLORS.SESSION_TOTAL} ${totalSessionTokens}${PET_CONFIG.COLORS.RESET}`;
       }
       
       return `${firstLine}${secondLine}`;

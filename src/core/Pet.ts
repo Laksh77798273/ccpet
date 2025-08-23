@@ -197,6 +197,31 @@ export class Pet {
     }
   }
 
+  // 获取当前状态对应的动画表情（如果支持动画的话）
+  public getAnimatedExpression(animationEnabled: boolean = false, frameIndex: number = 0): string {
+    const { STATE_THRESHOLDS, STATE_EXPRESSIONS, ANIMATED_EXPRESSIONS } = this.deps.config;
+    
+    if (!animationEnabled || !ANIMATED_EXPRESSIONS) {
+      return this.state.expression;
+    }
+    
+    let animationArray: string[];
+    
+    if (this.state.energy >= STATE_THRESHOLDS.HAPPY) {
+      animationArray = ANIMATED_EXPRESSIONS.HAPPY;
+    } else if (this.state.energy >= STATE_THRESHOLDS.HUNGRY) {
+      animationArray = ANIMATED_EXPRESSIONS.HUNGRY;
+    } else if (this.state.energy >= STATE_THRESHOLDS.SICK) {
+      animationArray = ANIMATED_EXPRESSIONS.SICK;
+    } else {
+      animationArray = ANIMATED_EXPRESSIONS.DEAD;
+    }
+    
+    // 使用帧索引循环显示动画序列
+    const index = frameIndex % animationArray.length;
+    return animationArray[index];
+  }
+
   private _notify(): void {
     this.observers.forEach(observer => {
       try {

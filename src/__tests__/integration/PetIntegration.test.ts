@@ -57,7 +57,7 @@ describe('Pet Integration Tests', () => {
       const state = pet.getState();
       const display = formatter.formatPetDisplay(state);
 
-      expect(display).toBe('(^_^) ●●●●●●●●●● 100.00 (0)');
+      expect(display).toBe('(^_^) ●●●●●●●●●● 100.00 (0) 💖1.00M');
     });
 
     it('should reflect energy changes in display format', () => {
@@ -68,12 +68,12 @@ describe('Pet Integration Tests', () => {
       pet.feed(500000); // Not enough for energy change, just accumulate
       const state1 = pet.getState();
       const display1 = formatter.formatPetDisplay(state1);
-      expect(display1).toBe('(o_o) ●●●●●○○○○○ 50.00 (500.0K)'); // 50% energy, 500K accumulated
+      expect(display1).toBe('(o_o) ●●●●●○○○○○ 50.00 (500.0K) 💖500.0K'); // 50% energy, 500K accumulated
 
       pet.feed(500000); // Now we have 1M total, triggers energy change
       const state2 = pet.getState();
       const display2 = formatter.formatPetDisplay(state2);
-      expect(display2).toBe('(o_o) ●●●●●○○○○○ 51.00 (0)'); // 51% energy, 0 accumulated (converted to energy)
+      expect(display2).toBe('(o_o) ●●●●●○○○○○ 51.00 (0) 💖1.00M'); // 51% energy, 0 accumulated (converted to energy)
     });
 
     it('should handle pet state transitions correctly', () => {
@@ -102,7 +102,7 @@ describe('Pet Integration Tests', () => {
       const display1 = statusLine1.getStatusDisplay();
       statusLine1.saveState();
       
-      expect(display1).toBe('(^_^) ●●●●●●●●●● 100.00 (0)');
+      expect(display1).toBe('(^_^) ●●●●●●●●●● 100.00 (0) 💖0');
       expect(fs.writeFileSync).toHaveBeenCalled();
       
       // Second session - load saved state
@@ -120,7 +120,7 @@ describe('Pet Integration Tests', () => {
       const statusLine2 = new ClaudeCodeStatusLine(true);
       const display2 = statusLine2.getStatusDisplay();
       
-      expect(display2).toBe('(^_^) ●●●●●●●●○○ 75.00 (0)'); // 75% energy (rounded to 8 bars)
+      expect(display2).toBe('(^_^) ●●●●●●●●○○ 75.00 (0) 💖5'); // 75% energy (rounded to 8 bars)
     });
 
     it('should handle error conditions throughout CLI lifecycle', () => {
@@ -137,7 +137,7 @@ describe('Pet Integration Tests', () => {
         const statusLine = new ClaudeCodeStatusLine(true);
         const display = statusLine.getStatusDisplay();
         statusLine.saveState();
-        expect(display).toBe('(^_^) ●●●●●●●●●● 100.00 (0)');
+        expect(display).toBe('(^_^) ●●●●●●●●●● 100.00 (0) 💖0');
       }).not.toThrow();
     });
 
@@ -162,7 +162,7 @@ describe('Pet Integration Tests', () => {
       const loadedState = storage.loadState();
       
       expect(loadedState).toEqual(state);
-      expect(display).toBe('(^_^) ●●●●●●●●●● 100.00 (3)');
+      expect(display).toBe('(^_^) ●●●●●●●●●● 100.00 (3) 💖3');
     });
   });
 });
