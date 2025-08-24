@@ -130,9 +130,6 @@ class ClaudeCodeStatusLine {
       if (tokenMetrics.contextLength !== undefined) {
         state.contextPercentage = Math.min(100, (tokenMetrics.contextLength / 200000) * 100);
         state.contextPercentageUsable = Math.min(100, (tokenMetrics.contextLength / 160000) * 100);
-      } else {
-        state.contextPercentage = undefined;
-        state.contextPercentageUsable = undefined;
       }
       
       // 启用动画并获取当前帧索引
