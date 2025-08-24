@@ -26,6 +26,7 @@
   - 彩色能量条和精确的能量值
   - 累计 token 和终身统计数据
   - 实时会话指标（输入/输出/缓存/总计）
+  - 宠物诞生时间追踪，支持生命周期管理
   
 - **⚙️ 可配置且持久化**
   - 自定义颜色和衰减率
@@ -69,11 +70,17 @@ ccpet --version          # 显示版本号
 #### 检查命令
 ```bash
 ccpet check              # 手动检查宠物状态（不消耗 token）
+ccpet check --watch      # 持续监控模式（60秒间隔）
+ccpet check -w --interval 30  # 监控模式，30秒间隔
+ccpet check --help       # 显示检查命令帮助
 ```
 使用 `ccpet check` 来：
 - ✅ 检查宠物状态而不消耗 token
 - ✅ 查看距离上次喂食的时间
 - ✅ 监控会话之间的能量等级
+- ✅ **新功能:** 持续监控，实时更新状态
+- ✅ **新功能:** 简洁的倒计时显示
+- ✅ **新功能:** 可自定义刷新间隔（10-300秒）
 
 #### 配置命令
 ```bash
@@ -104,6 +111,45 @@ ccpet config set display.line3.items "total"           # 第3行显示内容
 ```
 
 **可用的显示项目：** `input`, `output`, `cached`, `total`, `context-length`, `context-percentage`, `context-percentage-usable`, `cost`
+
+### 持续宠物监控
+
+**使用新的监控模式实时观察你的宠物：**
+
+```bash
+# 开始持续监控（默认60秒间隔）
+ccpet check --watch
+
+# 自定义监控间隔（10-300秒）
+ccpet check --watch --interval 30
+
+# 简短形式
+ccpet check -w --interval 45
+```
+
+**功能特性：**
+- ✅ 实时宠物状态更新
+- ✅ 简洁的3行显示布局
+- ✅ 倒计时器显示下次更新时间
+- ✅ Ctrl+C 优雅退出
+- ✅ 错误恢复和重试机制
+- ✅ 可自定义刷新间隔（10-300秒）
+- ✅ 原地更新，无屏幕闪烁
+
+**示例输出：**
+```text
+🐶(^_^) ●●●●●●●●●● 100.00 (838.9K) 💖25.84M
+⏰ 距离上次喂食: 0分钟前
+⏳ 下次更新: 10秒
+```
+
+**注意：** 显示内容会在每个间隔原地更新，替换之前的内容，提供清晰的监控体验。
+
+**使用场景：**
+- 🎯 监控宠物能量衰减过程
+- 🎯 观察喂食后的能量恢复
+- 🎯 跟踪长时间会话中的状态变化
+- 🎯 调试和测试宠物系统行为
 
 ## 状态显示
 
@@ -156,6 +202,7 @@ Total: 4615 Ctx(u): 88.5%
 ### 😴 当宠物死亡时
 如果你的宠物能量降到 0：
 - 所有统计数据都会重置（终身 token、累计 token）
+- 宠物重生时会获得新的诞生时间
 - 你的宠物可以通过继续使用 Claude Code 复活
 - 每个新 token 都有助于从头重建你的宠物
 
@@ -168,6 +215,21 @@ Total: 4615 Ctx(u): 88.5%
 1. 检查 Claude Code 设置：`cat ~/.claude/settings.json`
 2. 验证 ccpet 安装：`ccpet --version`
 3. 手动测试：`ccpet check`
+
+## 技术细节
+
+### 数据存储
+宠物状态保存在 `~/.claude-pet/pet-state.json` 文件中，包含以下结构：
+- `energy`: 当前能量等级 (0-100)
+- `expression`: 当前面部表情
+- `animalType`: 宠物种类 (cat, dog, rabbit, panda, fox)
+- `birthTime`: 宠物诞生/重生时间 (ISO时间戳)
+- `lastFeedTime`: 上次喂食时间戳
+- `totalTokensConsumed`: 本生命周期消耗的总token数
+- `totalLifetimeTokens`: 终身token消耗量
+- `accumulatedTokens`: 等待转换为能量的token数
+
+系统会自动为旧版本状态文件添加缺失字段（如 `birthTime`）以保持向后兼容性。
 
 ## 开发
 

@@ -36,6 +36,11 @@ export class PetStorage {
         parsed.lastDecayTime = new Date(parsed.lastDecayTime);
       }
       
+      // Convert birthTime back to Date object if it exists
+      if (parsed.birthTime) {
+        parsed.birthTime = new Date(parsed.birthTime);
+      }
+      
       // Handle backward compatibility - add totalLifetimeTokens if missing
       if (parsed.totalLifetimeTokens === undefined) {
         parsed.totalLifetimeTokens = parsed.totalTokensConsumed || 0;
@@ -52,6 +57,14 @@ export class PetStorage {
       if (!Object.values(AnimalType).includes(parsed.animalType)) {
         console.warn(`Invalid animal type found: ${parsed.animalType}, using default`);
         parsed.animalType = PET_CONFIG.ANIMAL.DEFAULT_TYPE;
+      }
+      
+      // Handle backward compatibility - add birthTime if missing
+      if (parsed.birthTime === undefined) {
+        // For existing pets without birthTime, use lastFeedTime as fallback
+        // This provides a reasonable estimate of when the pet was "born"
+        parsed.birthTime = parsed.lastFeedTime || new Date();
+        console.log(`Adding birthTime for existing pet: ${parsed.birthTime.toISOString()}`);
       }
       
       return parsed as IPetState;

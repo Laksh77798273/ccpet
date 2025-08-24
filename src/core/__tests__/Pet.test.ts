@@ -10,6 +10,7 @@ describe('Pet Core Logic', () => {
     energy: 50,
     expression: '(o_o)',
     animalType: AnimalType.CAT, // 默认使用CAT类型进行测试
+    birthTime: new Date('2024-01-01T00:00:00Z'), // 宠物诞生时间
     lastFeedTime: new Date('2024-01-01T00:00:00Z'),
     totalTokensConsumed: 0,
     accumulatedTokens: 0,
@@ -643,6 +644,21 @@ describe('Pet Core Logic', () => {
         const state = pet.getState();
         
         expect(state.accumulatedTokens).toBe(0);
+      });
+
+      it('should update birthTime to current time', () => {
+        const oldBirthTime = new Date('2020-01-01T00:00:00Z');
+        const initialState = { ...createInitialState(), birthTime: oldBirthTime };
+        const pet = new Pet(initialState, mockDependencies);
+        const beforeReset = Date.now();
+        
+        pet.resetToInitialState();
+        const state = pet.getState();
+        const afterReset = Date.now();
+        
+        expect(state.birthTime.getTime()).toBeGreaterThanOrEqual(beforeReset);
+        expect(state.birthTime.getTime()).toBeLessThanOrEqual(afterReset);
+        expect(state.birthTime.getTime()).not.toBe(oldBirthTime.getTime());
       });
 
       it('should reset session token counts to 0', () => {

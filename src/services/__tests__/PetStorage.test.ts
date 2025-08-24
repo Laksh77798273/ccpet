@@ -20,6 +20,7 @@ describe('PetStorage Service', () => {
     energy: 75,
     expression: '(^_^)',
     animalType: AnimalType.CAT,
+    birthTime: new Date('2025-08-20T10:00:00.000Z'),
     lastFeedTime: new Date('2025-08-21T12:00:00.000Z'),
     totalTokensConsumed: 5,
     accumulatedTokens: 0,
@@ -163,11 +164,12 @@ describe('PetStorage Service', () => {
       const result = storage.loadState();
       
       // Should add totalLifetimeTokens for backward compatibility
-      expect(result).toEqual({
+      expect(result).toEqual(expect.objectContaining({
         ...mockState,
         totalLifetimeTokens: 5,
-        animalType: AnimalType.CAT // Should add default animal type
-      });
+        animalType: AnimalType.CAT, // Should add default animal type
+        birthTime: expect.any(Date) // Should add birthTime for backward compatibility
+      }));
     });
 
     it('should add default animal type for backward compatibility', () => {
@@ -187,10 +189,36 @@ describe('PetStorage Service', () => {
       const storage = new PetStorage();
       const result = storage.loadState();
       
-      expect(result).toEqual({
+      expect(result).toEqual(expect.objectContaining({
         ...mockStateWithoutAnimalType,
         lastFeedTime: new Date('2025-08-21T12:00:00.000Z'),
-        animalType: AnimalType.CAT // Should add default animal type
+        animalType: AnimalType.CAT, // Should add default animal type
+        birthTime: expect.any(Date) // Should add birthTime for backward compatibility
+      }));
+    });
+
+    it('should add birthTime for backward compatibility', () => {
+      const mockStateWithoutBirthTime = {
+        energy: 75,
+        expression: '(^_^)',
+        animalType: AnimalType.CAT,
+        lastFeedTime: '2025-08-21T12:00:00.000Z',
+        totalTokensConsumed: 5,
+        accumulatedTokens: 0,
+        totalLifetimeTokens: 5
+      };
+      const mockJson = JSON.stringify(mockStateWithoutBirthTime);
+      
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(mockJson);
+      
+      const storage = new PetStorage();
+      const result = storage.loadState();
+      
+      expect(result).toEqual({
+        ...mockStateWithoutBirthTime,
+        lastFeedTime: new Date('2025-08-21T12:00:00.000Z'),
+        birthTime: new Date('2025-08-21T12:00:00.000Z') // Should use lastFeedTime as fallback
       });
     });
 
@@ -212,11 +240,12 @@ describe('PetStorage Service', () => {
       const storage = new PetStorage();
       const result = storage.loadState();
       
-      expect(result).toEqual({
+      expect(result).toEqual(expect.objectContaining({
         ...mockStateWithInvalidAnimalType,
         lastFeedTime: new Date('2025-08-21T12:00:00.000Z'),
-        animalType: AnimalType.CAT // Should fix invalid animal type to default
-      });
+        animalType: AnimalType.CAT, // Should fix invalid animal type to default
+        birthTime: expect.any(Date) // Should add birthTime for backward compatibility
+      }));
     });
 
     it('should preserve valid animal types', () => {

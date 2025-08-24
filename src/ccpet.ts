@@ -3,7 +3,7 @@ import { StatusBarFormatter } from './ui/StatusBar';
 import { PetStorage } from './services/PetStorage';
 import { ConfigService } from './services/ConfigService';
 import { getTokenMetrics } from './utils/jsonl';
-import { PET_CONFIG, AnimalType } from './core/config';
+import { PET_CONFIG } from './core/config';
 
 // Simple animation counter for cycling expressions
 class AnimationCounter {
@@ -87,11 +87,13 @@ class ClaudeCodeStatusLine {
     
     // Load or create initial pet state
     const savedState = this.storage.loadState();
+    const now = new Date();
     const initialState: IPetState = savedState || {
       energy: PET_CONFIG.INITIAL_ENERGY,
       expression: PET_CONFIG.HAPPY_EXPRESSION,
       animalType: Pet.getRandomAnimalType(), // 随机分配动物类型给新宠物
-      lastFeedTime: new Date(),
+      birthTime: now, // 新宠物的诞生时间
+      lastFeedTime: now,
       totalTokensConsumed: 0,
       accumulatedTokens: 0,
       totalLifetimeTokens: 0

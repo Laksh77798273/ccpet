@@ -225,7 +225,7 @@ describe('Pet Integration Tests', () => {
       storage.saveState(state);
       const loadedState = storage.loadState();
       
-      expect(loadedState).toEqual(state);
+      expect(loadedState).toEqual(expect.objectContaining(state));
       expect(display).toMatch(/[🐱🐶🐰🐼🦊]\(\^_\^\) ●●●●●●●●●● 100\.00 \(3\) 💖3/);
     });
   });

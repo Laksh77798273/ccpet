@@ -26,6 +26,7 @@ A virtual pet for your Claude Code status line. The pet's energy decays over tim
   - Colorful energy bar with precise energy values
   - Accumulated tokens and lifetime statistics
   - Real-time session metrics (input/output/cached/total)
+  - Pet birth time tracking for lifecycle management
   
 - **⚙️ Configurable & Persistent**
   - Customizable colors and decay rates
@@ -69,11 +70,17 @@ ccpet --version          # Show version number
 #### Check Command
 ```bash
 ccpet check              # Manually check pet status (no token cost)
+ccpet check --watch      # Continuous monitoring mode (60s interval)
+ccpet check -w --interval 30  # Watch mode with 30s interval
+ccpet check --help       # Show check command help
 ```
 Use `ccpet check` to:
 - ✅ Check pet status without consuming tokens
 - ✅ See time since last feeding
 - ✅ Monitor energy levels between sessions
+- ✅ **NEW:** Continuous monitoring with real-time updates
+- ✅ **NEW:** Clean countdown display
+- ✅ **NEW:** Customizable refresh intervals (10-300 seconds)
 
 #### Configuration Command
 ```bash
@@ -104,6 +111,39 @@ ccpet config set display.line3.items "total"           # What to show on line 3
 ```
 
 **Available Display Items:** `input`, `output`, `cached`, `total`, `context-length`, `context-percentage`, `context-percentage-usable`, `cost`
+
+### Continuous Pet Monitoring
+
+**Monitor your pet in real-time with the new watch mode:**
+
+```bash
+# Start continuous monitoring (default 60s interval)
+ccpet check --watch
+
+# Custom monitoring interval (10-300 seconds)
+ccpet check --watch --interval 30
+
+# Short form
+ccpet check -w --interval 45
+```
+
+**Features:**
+- ✅ Real-time pet status updates
+- ✅ Clean 3-line display layout
+- ✅ Countdown timer showing next update
+- ✅ Graceful exit with Ctrl+C
+- ✅ Error recovery with retry mechanisms
+- ✅ Customizable refresh intervals (10-300 seconds)
+- ✅ In-place updates without screen flicker
+
+**Example Output:**
+```text
+🐶(^_^) ●●●●●●●●●● 100.00 (838.9K) 💖25.84M
+⏰ 距离上次喂食: 0分钟前
+⏳ 下次更新: 10秒
+```
+
+**Note:** The display updates in-place every interval, replacing the previous content for a clean monitoring experience.
 
 ## Status Display
 
@@ -156,6 +196,7 @@ Total: 4615 Ctx(u): 88.5%
 ### 😴 When Your Pet Dies
 If your pet's energy reaches 0:
 - All statistics are reset (lifetime tokens, accumulated tokens)
+- Pet gets a new birth time when reborn
 - Your pet can be revived by continued Claude Code usage
 - Each new token helps rebuild your pet from scratch
 
@@ -168,6 +209,21 @@ The status line only updates when you use Claude Code. Use `ccpet check` for man
 1. Check Claude Code settings: `cat ~/.claude/settings.json`
 2. Verify ccpet installation: `ccpet --version`
 3. Test manually: `ccpet check`
+
+## Technical Details
+
+### Data Storage
+Pet state is stored in `~/.claude-pet/pet-state.json` with the following structure:
+- `energy`: Current energy level (0-100)
+- `expression`: Current facial expression
+- `animalType`: Pet species (cat, dog, rabbit, panda, fox)
+- `birthTime`: When the pet was born/reborn (ISO timestamp)
+- `lastFeedTime`: Last feeding timestamp
+- `totalTokensConsumed`: Total tokens consumed this lifecycle
+- `totalLifetimeTokens`: Lifetime token consumption
+- `accumulatedTokens`: Tokens waiting to convert to energy
+
+The system automatically adds missing fields (like `birthTime`) for backward compatibility.
 
 ## Development
 

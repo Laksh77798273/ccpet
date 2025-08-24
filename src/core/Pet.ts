@@ -4,6 +4,7 @@ export interface IPetState {
   energy: number;
   expression: string;
   animalType: AnimalType; // 动物类型字段
+  birthTime: Date; // 宠物诞生时间
   lastFeedTime: Date;
   totalTokensConsumed: number;
   accumulatedTokens: number; // 当前累积的token数（用于下次能量增加）
@@ -191,6 +192,7 @@ export class Pet {
         energy: this.deps.config.INITIAL_ENERGY,
         expression: this.deps.config.STATE_EXPRESSIONS.HAPPY,
         animalType: newAnimalType, // 随机分配新的动物类型
+        birthTime: now, // 设置新的诞生时间
         lastFeedTime: now,
         totalTokensConsumed: 0,
         accumulatedTokens: 0,
