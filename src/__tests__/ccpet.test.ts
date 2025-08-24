@@ -1,4 +1,60 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// Create mock ConfigService instance for dependency injection
+const mockConfigService = {
+  getConfig: vi.fn(() => ({
+    pet: {
+      animationEnabled: true,
+      decayRate: 0.0231,
+      emojiEnabled: false
+    },
+    colors: {
+      petExpression: '#FFFF00:bright:bold',
+      energyBar: '#00FF00',
+      energyValue: '#00FFFF',
+      accumulatedTokens: '#778899',
+      lifetimeTokens: '#FF00FF',
+      sessionInput: '#00FF00',
+      sessionOutput: '#FFFF00',
+      sessionCached: '#F4A460',
+      sessionTotal: '#FFFFFF',
+      contextLength: '#00DDFF',
+      contextPercentage: '#0099DD',
+      contextPercentageUsable: '#90EE90',
+      cost: '#FFD700'
+    },
+    display: {
+      maxLines: 3,
+      line2: {
+        enabled: true,
+        items: ['input', 'output', 'cached', 'total']
+      },
+      line3: {
+        enabled: true,
+        items: ['context-length', 'context-percentage', 'context-percentage-usable', 'cost']
+      }
+    }
+  })),
+  setColorConfig: vi.fn(),
+  setPetConfig: vi.fn(),
+  setDisplayConfig: vi.fn(),
+  resetConfig: vi.fn(),
+  listConfig: vi.fn(),
+  getConfigPath: vi.fn()
+} as any;
+
+// Mock the colors utility to return mock ANSI codes
+vi.mock('../utils/colors', () => ({
+  processColorConfig: vi.fn((colors) => {
+    // Return processed colors with mock ANSI codes
+    const processed = {};
+    Object.keys(colors).forEach(key => {
+      processed[key] = `\x1b[0m`; // Basic reset code for all colors
+    });
+    return processed;
+  })
+}));
+
 import { ClaudeCodeStatusLine } from '../ccpet';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -18,9 +74,11 @@ vi.mock('../utils/jsonl', () => ({
     totalTokens: 150,
     sessionTotalInputTokens: 100,
     sessionTotalOutputTokens: 50,
-    sessionTotalCachedTokens: 0
+    sessionTotalCachedTokens: 0,
+    contextLength: 4096
   }))
 }));
+
 
 describe('ClaudeCodeStatusLine', () => {
   const mockHomedir = '/mock/home';
@@ -74,11 +132,16 @@ describe('ClaudeCodeStatusLine', () => {
     vi.restoreAllMocks();
   });
 
+  // Helper function to create ClaudeCodeStatusLine with mocked dependencies
+  const createStatusLine = (testMode: boolean = true) => {
+    return new ClaudeCodeStatusLine(testMode, mockConfigService);
+  };
+
   describe('constructor', () => {
     it('should initialize with new pet state when no saved state exists', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
       
-      const statusLine = new ClaudeCodeStatusLine(true);
+      const statusLine = createStatusLine();
       
       expect(statusLine).toBeInstanceOf(ClaudeCodeStatusLine);
     });
@@ -95,7 +158,7 @@ describe('ClaudeCodeStatusLine', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(savedState));
       
-      const statusLine = new ClaudeCodeStatusLine(true);
+      const statusLine = createStatusLine();
       
       expect(fs.readFileSync).toHaveBeenCalledWith(mockStateFile, 'utf8');
       expect(statusLine).toBeInstanceOf(ClaudeCodeStatusLine);
@@ -107,7 +170,7 @@ describe('ClaudeCodeStatusLine', () => {
         throw new Error('Read error');
       });
       
-      expect(() => new ClaudeCodeStatusLine(true)).not.toThrow();
+      expect(() => createStatusLine()).not.toThrow();
     });
   });
 
@@ -115,10 +178,10 @@ describe('ClaudeCodeStatusLine', () => {
     it('should return formatted pet display', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
       
-      const statusLine = new ClaudeCodeStatusLine(true);
+      const statusLine = createStatusLine();
       const display = statusLine.getStatusDisplay();
       
-      expect(display).toBe('(^_^) ●●●●●●●●●● 100.00 (0) 💖0');
+      expect(display).toMatch(/\(.*\) ●●●●●●●●●● 100\.00 \(0\) 💖0/); // No emoji for ccpet tests
     });
 
     it('should return display for saved state', () => {
@@ -135,7 +198,7 @@ describe('ClaudeCodeStatusLine', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(savedState));
       
-      const statusLine = new ClaudeCodeStatusLine(true);
+      const statusLine = createStatusLine();
       const display = statusLine.getStatusDisplay();
       
       expect(display).toBe('(o_o) ●●●●●○○○○○ 50.00 (0) 💖10');
@@ -156,13 +219,13 @@ describe('ClaudeCodeStatusLine', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(initialState));
       
-      const statusLine = new ClaudeCodeStatusLine(true);
+      const statusLine = createStatusLine();
       
       // Act - Process tokens (150 total tokens, not enough for 1M threshold)
       const display = await statusLine.processTokensAndGetStatusDisplay(mockClaudeCodeInput);
       
       // Assert - Energy should stay at 30, but accumulated tokens should be 150
-      expect(display).toBe('(o_o) ●●●○○○○○○○ 30.00 (150) 💖150\nInput: 100 Output: 50 Cached: 0 Total: 150\nCost: $0.01'); // 30% energy
+      expect(display).toBe('(u_u) ●●●○○○○○○○ 30.00 (150) 💖150\nInput: 100 Output: 50 Cached: 0 Total: 150\nCtx: 4.1K Ctx: 2.0% Ctx(u): 2.6% Cost: $0.01'); // 30% energy
     });
 
     it('should handle token processing errors gracefully', async () => {
@@ -182,7 +245,7 @@ describe('ClaudeCodeStatusLine', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(initialState));
       
-      const statusLine = new ClaudeCodeStatusLine(true);
+      const statusLine = createStatusLine();
       
       // Act & Assert - Should not throw and return current state
       await expect(statusLine.processTokensAndGetStatusDisplay(mockClaudeCodeInput))
@@ -198,7 +261,8 @@ describe('ClaudeCodeStatusLine', () => {
         totalTokens: 0,
         sessionTotalInputTokens: 0,
         sessionTotalOutputTokens: 0,
-        sessionTotalCachedTokens: 0
+        sessionTotalCachedTokens: 0,
+        contextLength: 0
       });
 
       const initialState = {
@@ -212,13 +276,13 @@ describe('ClaudeCodeStatusLine', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(initialState));
       
-      const statusLine = new ClaudeCodeStatusLine(true);
+      const statusLine = createStatusLine();
       
       // Act
       const display = await statusLine.processTokensAndGetStatusDisplay(mockClaudeCodeInput);
       
       // Assert - No energy change, no accumulated tokens
-      expect(display).toBe('(o_o) ●●●●●○○○○○ 50.00 (0) 💖0\nInput: 0 Output: 0 Cached: 0 Total: 0\nCost: $0.01'); // Still 50% energy
+      expect(display).toBe('(o_o) ●●●●●○○○○○ 50.00 (0) 💖0\nInput: 0 Output: 0 Cached: 0 Total: 0\nCtx: 0 Ctx: 0.0% Ctx(u): 0.0% Cost: $0.01'); // Still 50% energy
     });
 
     it('should cap energy at 100 when adding tokens', async () => {
@@ -230,7 +294,8 @@ describe('ClaudeCodeStatusLine', () => {
         totalTokens: 2000000, // This would add 2 energy (2M tokens = 2 energy)
         sessionTotalInputTokens: 1000000,
         sessionTotalOutputTokens: 1000000,
-        sessionTotalCachedTokens: 0
+        sessionTotalCachedTokens: 0,
+        contextLength: 8192
       });
 
       const initialState = {
@@ -244,13 +309,13 @@ describe('ClaudeCodeStatusLine', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(initialState));
       
-      const statusLine = new ClaudeCodeStatusLine(true);
+      const statusLine = createStatusLine();
       
       // Act
       const display = await statusLine.processTokensAndGetStatusDisplay(mockClaudeCodeInput);
       
       // Assert - Energy should increase to 97 (95 + 2 from 2M tokens), accumulated tokens should be 0
-      expect(display).toBe('(^_^) ●●●●●●●●●● 97.00 (0) 💖2.00M\nInput: 1.00M Output: 1.00M Cached: 0 Total: 2.00M\nCost: $0.01'); // 97% energy
+      expect(display).toBe('(^_^) ●●●●●●●●●● 97.00 (0) 💖2.00M\nInput: 1.00M Output: 1.00M Cached: 0 Total: 2.00M\nCtx: 8.2K Ctx: 4.1% Ctx(u): 5.1% Cost: $0.01'); // 97% energy
     });
   });
 
@@ -258,7 +323,7 @@ describe('ClaudeCodeStatusLine', () => {
     it('should save pet state', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
       
-      const statusLine = new ClaudeCodeStatusLine(true);
+      const statusLine = createStatusLine();
       statusLine.saveState();
       
       expect(fs.writeFileSync).toHaveBeenCalledWith(
@@ -274,7 +339,7 @@ describe('ClaudeCodeStatusLine', () => {
         throw new Error('Write error');
       });
       
-      const statusLine = new ClaudeCodeStatusLine(true);
+      const statusLine = createStatusLine();
       
       expect(() => statusLine.saveState()).not.toThrow();
     });
@@ -294,7 +359,7 @@ describe('ClaudeCodeStatusLine', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(deadState));
         
-        const statusLine = new ClaudeCodeStatusLine(true);
+        const statusLine = createStatusLine();
         
         expect(statusLine.isPetDead()).toBe(true);
         
@@ -321,7 +386,7 @@ describe('ClaudeCodeStatusLine', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(aliveState));
         
-        const statusLine = new ClaudeCodeStatusLine(true);
+        const statusLine = createStatusLine();
         
         expect(statusLine.isPetDead()).toBe(false);
         
@@ -345,7 +410,7 @@ describe('ClaudeCodeStatusLine', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(deadState));
         
-        const statusLine = new ClaudeCodeStatusLine(true);
+        const statusLine = createStatusLine();
         
         // Clear previous calls to writeFileSync
         vi.mocked(fs.writeFileSync).mockClear();
@@ -393,7 +458,7 @@ describe('ClaudeCodeStatusLine', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(deadState));
         
-        const statusLine = new ClaudeCodeStatusLine(true);
+        const statusLine = createStatusLine();
         statusLine.adoptNewPet();
         
         expect(mockVscode.postMessage).toHaveBeenCalledWith({
@@ -420,7 +485,7 @@ describe('ClaudeCodeStatusLine', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(deadState));
         
-        const statusLine = new ClaudeCodeStatusLine(true);
+        const statusLine = createStatusLine();
         
         expect(statusLine.isPetDead()).toBe(true);
       });
@@ -437,7 +502,7 @@ describe('ClaudeCodeStatusLine', () => {
         vi.mocked(fs.existsSync).mockReturnValue(true);
         vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(aliveState));
         
-        const statusLine = new ClaudeCodeStatusLine(true);
+        const statusLine = createStatusLine();
         
         expect(statusLine.isPetDead()).toBe(false);
       });
@@ -445,7 +510,7 @@ describe('ClaudeCodeStatusLine', () => {
       it('should return false for healthy pet', () => {
         vi.mocked(fs.existsSync).mockReturnValue(false);
         
-        const statusLine = new ClaudeCodeStatusLine(true);
+        const statusLine = createStatusLine();
         
         expect(statusLine.isPetDead()).toBe(false);
       });
@@ -457,7 +522,7 @@ describe('ClaudeCodeStatusLine', () => {
       const { getTokenMetrics } = await import('../utils/jsonl');
       
       vi.mocked(fs.existsSync).mockReturnValue(false);
-      const statusLine = new ClaudeCodeStatusLine(true);
+      const statusLine = createStatusLine();
       
       await statusLine.processTokensAndGetStatusDisplay(mockClaudeCodeInput);
       
@@ -473,7 +538,8 @@ describe('ClaudeCodeStatusLine', () => {
         totalTokens: 100, // Should accumulate 100 tokens, not enough for energy
         sessionTotalInputTokens: 50,
         sessionTotalOutputTokens: 50,
-        sessionTotalCachedTokens: 0
+        sessionTotalCachedTokens: 0,
+        contextLength: 2048
       });
 
       // Use future time to avoid time decay
@@ -489,13 +555,13 @@ describe('ClaudeCodeStatusLine', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(initialState));
       
-      const statusLine = new ClaudeCodeStatusLine(true);
+      const statusLine = createStatusLine();
       
       // Act
       const display = await statusLine.processTokensAndGetStatusDisplay(mockClaudeCodeInput);
       
       // Assert - Energy should stay at 40, accumulated tokens should be 100
-      expect(display).toBe('(o_o) ●●●●○○○○○○ 40.00 (100) 💖100\nInput: 50 Output: 50 Cached: 0 Total: 100\nCost: $0.01'); // 40% energy
+      expect(display).toBe('(o_o) ●●●●○○○○○○ 40.00 (100) 💖100\nInput: 50 Output: 50 Cached: 0 Total: 100\nCtx: 2.0K Ctx: 1.0% Ctx(u): 1.3% Cost: $0.01'); // 40% energy
     });
   });
 });

@@ -1,8 +1,9 @@
 import { Pet, IPetState } from './core/Pet';
 import { StatusBarFormatter } from './ui/StatusBar';
 import { PetStorage } from './services/PetStorage';
+import { ConfigService } from './services/ConfigService';
 import { getTokenMetrics } from './utils/jsonl';
-import { PET_CONFIG } from './core/config';
+import { PET_CONFIG, AnimalType } from './core/config';
 
 // Simple animation counter for cycling expressions
 class AnimationCounter {
@@ -75,18 +76,21 @@ class ClaudeCodeStatusLine {
   private pet: Pet;
   private formatter: StatusBarFormatter;
   private storage: PetStorage;
+  private configService: ConfigService;
   private animationCounter: AnimationCounter;
 
-  constructor(testMode: boolean = false) {
+  constructor(testMode: boolean = false, configService?: ConfigService) {
     this.animationCounter = new AnimationCounter(testMode);
     this.storage = new PetStorage();
-    this.formatter = new StatusBarFormatter(testMode);
+    this.configService = configService || new ConfigService();
+    this.formatter = new StatusBarFormatter(testMode, configService);
     
     // Load or create initial pet state
     const savedState = this.storage.loadState();
     const initialState: IPetState = savedState || {
       energy: PET_CONFIG.INITIAL_ENERGY,
       expression: PET_CONFIG.HAPPY_EXPRESSION,
+      animalType: Pet.getRandomAnimalType(), // 随机分配动物类型给新宠物
       lastFeedTime: new Date(),
       totalTokensConsumed: 0,
       accumulatedTokens: 0,
@@ -137,8 +141,12 @@ class ClaudeCodeStatusLine {
       const animationEnabled = this.animationCounter.shouldEnableAnimation();
       const frameIndex = this.animationCounter.getFrameIndex();
       
-      // 获取动画表情
-      const animatedExpression = this.pet.getAnimatedExpression(animationEnabled, frameIndex);
+      // 获取用户配置
+      const config = this.configService.getConfig();
+      const emojiEnabled = config.pet.emojiEnabled ?? true;
+      
+      // 获取动画表情（带emoji支持）
+      const animatedExpression = this.pet.getAnimatedExpression(animationEnabled, frameIndex, emojiEnabled);
       
       // 显示宠物状态（带动画表情）
       return this.formatter.formatPetDisplay(state, animatedExpression);
@@ -165,8 +173,12 @@ class ClaudeCodeStatusLine {
     const animationEnabled = this.animationCounter.shouldEnableAnimation();
     const frameIndex = this.animationCounter.getFrameIndex();
     
-    // 获取动画表情
-    const animatedExpression = this.pet.getAnimatedExpression(animationEnabled, frameIndex);
+    // 获取用户配置
+    const config = this.configService.getConfig();
+    const emojiEnabled = config.pet.emojiEnabled ?? true;
+    
+    // 获取动画表情（带emoji支持）
+    const animatedExpression = this.pet.getAnimatedExpression(animationEnabled, frameIndex, emojiEnabled);
     
     // 显示宠物状态（带动画表情）
     return this.formatter.formatPetDisplay(state, animatedExpression);

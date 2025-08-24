@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PetStorage } from '../PetStorage';
 import { IPetState } from '../../core/Pet';
+import { AnimalType } from '../../core/config';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -18,6 +19,7 @@ describe('PetStorage Service', () => {
   const createMockPetState = (overrides: Partial<IPetState> = {}): IPetState => ({
     energy: 75,
     expression: '(^_^)',
+    animalType: AnimalType.CAT,
     lastFeedTime: new Date('2025-08-21T12:00:00.000Z'),
     totalTokensConsumed: 5,
     accumulatedTokens: 0,
@@ -163,7 +165,86 @@ describe('PetStorage Service', () => {
       // Should add totalLifetimeTokens for backward compatibility
       expect(result).toEqual({
         ...mockState,
+        totalLifetimeTokens: 5,
+        animalType: AnimalType.CAT // Should add default animal type
+      });
+    });
+
+    it('should add default animal type for backward compatibility', () => {
+      const mockStateWithoutAnimalType = {
+        energy: 75,
+        expression: '(^_^)',
+        lastFeedTime: '2025-08-21T12:00:00.000Z',
+        totalTokensConsumed: 5,
+        accumulatedTokens: 0,
         totalLifetimeTokens: 5
+      };
+      const mockJson = JSON.stringify(mockStateWithoutAnimalType);
+      
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(mockJson);
+      
+      const storage = new PetStorage();
+      const result = storage.loadState();
+      
+      expect(result).toEqual({
+        ...mockStateWithoutAnimalType,
+        lastFeedTime: new Date('2025-08-21T12:00:00.000Z'),
+        animalType: AnimalType.CAT // Should add default animal type
+      });
+    });
+
+    it('should validate and fix invalid animal types', () => {
+      const mockStateWithInvalidAnimalType = {
+        energy: 75,
+        expression: '(^_^)',
+        animalType: 'invalid_animal' as any,
+        lastFeedTime: '2025-08-21T12:00:00.000Z',
+        totalTokensConsumed: 5,
+        accumulatedTokens: 0,
+        totalLifetimeTokens: 5
+      };
+      const mockJson = JSON.stringify(mockStateWithInvalidAnimalType);
+      
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(mockJson);
+      
+      const storage = new PetStorage();
+      const result = storage.loadState();
+      
+      expect(result).toEqual({
+        ...mockStateWithInvalidAnimalType,
+        lastFeedTime: new Date('2025-08-21T12:00:00.000Z'),
+        animalType: AnimalType.CAT // Should fix invalid animal type to default
+      });
+    });
+
+    it('should preserve valid animal types', () => {
+      const mockState = createMockPetState({ animalType: AnimalType.FOX });
+      const mockJson = JSON.stringify(mockState);
+      
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.readFileSync).mockReturnValue(mockJson);
+      
+      const storage = new PetStorage();
+      const result = storage.loadState();
+      
+      expect(result?.animalType).toBe(AnimalType.FOX);
+    });
+
+    it('should handle all valid animal types correctly', () => {
+      const allTypes = Object.values(AnimalType);
+      
+      allTypes.forEach(type => {
+        const mockState = createMockPetState({ animalType: type });
+        const mockJson = JSON.stringify(mockState);
+        
+        vi.mocked(fs.readFileSync).mockReturnValue(mockJson);
+        
+        const storage = new PetStorage();
+        const result = storage.loadState();
+        
+        expect(result?.animalType).toBe(type);
       });
     });
   });

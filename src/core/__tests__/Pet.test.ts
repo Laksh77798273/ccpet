@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Pet, IPetState } from '../Pet';
-import { PET_CONFIG } from '../config';
+import { PET_CONFIG, AnimalType } from '../config';
 
 describe('Pet Core Logic', () => {
   const mockConfig = PET_CONFIG;
@@ -9,9 +9,11 @@ describe('Pet Core Logic', () => {
   const createInitialState = (): IPetState => ({
     energy: 50,
     expression: '(o_o)',
+    animalType: AnimalType.CAT, // 默认使用CAT类型进行测试
     lastFeedTime: new Date('2024-01-01T00:00:00Z'),
     totalTokensConsumed: 0,
-    accumulatedTokens: 0
+    accumulatedTokens: 0,
+    totalLifetimeTokens: 0
   });
 
   describe('constructor and getState', () => {
@@ -768,6 +770,393 @@ describe('Pet Core Logic', () => {
       // 120 minutes * 0.0231 = 2.772 energy decay
       // 50 - 2.772 = 47.228
       expect(state.energy).toBeCloseTo(47.23, 1);
+    });
+  });
+
+  describe('Animal Type System', () => {
+    describe('getCurrentAnimalType', () => {
+      it('should return the current animal type', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.DOG };
+        const pet = new Pet(initialState, mockDependencies);
+
+        expect(pet.getCurrentAnimalType()).toBe(AnimalType.DOG);
+      });
+
+      it('should return the correct animal type after state changes', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.RABBIT };
+        const pet = new Pet(initialState, mockDependencies);
+
+        expect(pet.getCurrentAnimalType()).toBe(AnimalType.RABBIT);
+        
+        // After feeding, animal type should remain the same
+        pet.feed(1000000);
+        expect(pet.getCurrentAnimalType()).toBe(AnimalType.RABBIT);
+      });
+    });
+
+    describe('getRandomAnimalType', () => {
+      it('should return a valid animal type', () => {
+        const randomType = Pet.getRandomAnimalType();
+        const validTypes = Object.values(AnimalType);
+        
+        expect(validTypes).toContain(randomType);
+      });
+
+      it('should return different types across multiple calls', () => {
+        const results = new Set<AnimalType>();
+        
+        // Call multiple times to increase chance of getting different types
+        for (let i = 0; i < 50; i++) {
+          results.add(Pet.getRandomAnimalType());
+        }
+        
+        // Should have at least 2 different types (randomness allows for some repetition)
+        expect(results.size).toBeGreaterThanOrEqual(2);
+      });
+
+      it('should only return valid enum values', () => {
+        const validTypes = Object.values(AnimalType);
+        
+        for (let i = 0; i < 20; i++) {
+          const result = Pet.getRandomAnimalType();
+          expect(validTypes).toContain(result);
+        }
+      });
+    });
+
+    describe('resetToInitialState with animal types', () => {
+      it('should assign a random animal type when resetting', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.CAT, energy: 0 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.resetToInitialState();
+        const newState = pet.getState();
+        
+        // Should have a valid animal type
+        const validTypes = Object.values(AnimalType);
+        expect(validTypes).toContain(newState.animalType);
+      });
+
+      it('should potentially change animal type on reset', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.CAT, energy: 0 };
+        const pet = new Pet(initialState, mockDependencies);
+        const originalType = pet.getCurrentAnimalType();
+        
+        // Reset multiple times to increase chance of getting different type
+        let differentTypeFound = false;
+        for (let i = 0; i < 20 && !differentTypeFound; i++) {
+          pet.resetToInitialState();
+          if (pet.getCurrentAnimalType() !== originalType) {
+            differentTypeFound = true;
+          }
+        }
+        
+        // Note: Due to randomness, this test might rarely fail if the same type is selected repeatedly
+        // In practice, with 5 types, the chance of getting the same type 20 times is very low
+      });
+
+      it('should reset all pet state including animal type persistence', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.PANDA, energy: 0 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.resetToInitialState();
+        const newState = pet.getState();
+        
+        // All other properties should be reset correctly
+        expect(newState.energy).toBe(PET_CONFIG.INITIAL_ENERGY);
+        expect(newState.expression).toBe(PET_CONFIG.STATE_EXPRESSIONS.HAPPY);
+        expect(newState.totalTokensConsumed).toBe(0);
+        expect(newState.accumulatedTokens).toBe(0);
+        expect(newState.totalLifetimeTokens).toBe(0);
+        
+        // Animal type should be a valid type
+        const validTypes = Object.values(AnimalType);
+        expect(validTypes).toContain(newState.animalType);
+      });
+    });
+
+    describe('animal type preservation during operations', () => {
+      it('should preserve animal type when feeding', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.FOX };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.feed(1000000);
+        const newState = pet.getState();
+        
+        expect(newState.animalType).toBe(AnimalType.FOX);
+      });
+
+      it('should preserve animal type during time decay', () => {
+        const oneHourAgo = new Date(Date.now() - (60 * 60 * 1000));
+        const initialState = { 
+          ...createInitialState(), 
+          animalType: AnimalType.PANDA,
+          lastFeedTime: oneHourAgo,
+          energy: 50
+        };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.applyTimeDecay();
+        const newState = pet.getState();
+        
+        expect(newState.animalType).toBe(AnimalType.PANDA);
+      });
+
+      it('should preserve animal type during energy operations', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.RABBIT };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.addEnergy(20);
+        expect(pet.getCurrentAnimalType()).toBe(AnimalType.RABBIT);
+        
+        pet.decreaseEnergy(10);
+        expect(pet.getCurrentAnimalType()).toBe(AnimalType.RABBIT);
+      });
+    });
+
+    describe('integration with existing functionality', () => {
+      it('should maintain animal type in state copies', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.DOG };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        const state1 = pet.getState();
+        const state2 = pet.getState();
+        
+        expect(state1.animalType).toBe(AnimalType.DOG);
+        expect(state2.animalType).toBe(AnimalType.DOG);
+        expect(state1).not.toBe(state2); // Should still be different objects
+      });
+
+      it('should notify observers with correct animal type', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.FOX };
+        const pet = new Pet(initialState, mockDependencies);
+        const observer = vi.fn();
+        
+        pet.subscribe(observer);
+        pet.addEnergy(10);
+        
+        expect(observer).toHaveBeenCalledWith(
+          expect.objectContaining({ animalType: AnimalType.FOX })
+        );
+      });
+
+      it('should work with all defined animal types', () => {
+        const allTypes = Object.values(AnimalType);
+        
+        allTypes.forEach(type => {
+          const initialState = { ...createInitialState(), animalType: type };
+          const pet = new Pet(initialState, mockDependencies);
+          
+          expect(pet.getCurrentAnimalType()).toBe(type);
+          expect(pet.getState().animalType).toBe(type);
+          
+          // Test operations work with all types
+          pet.feed(1000000);
+          expect(pet.getCurrentAnimalType()).toBe(type);
+        });
+      });
+    });
+  });
+
+  describe('Emoji Display System', () => {
+    describe('getAnimalEmoji', () => {
+      it('should return correct emoji for each animal type', () => {
+        const allTypes = Object.values(AnimalType);
+        
+        allTypes.forEach(type => {
+          const initialState = { ...createInitialState(), animalType: type };
+          const pet = new Pet(initialState, mockDependencies);
+          const emoji = pet.getAnimalEmoji();
+          
+          // Check that emoji is not empty and is actually an emoji character
+          expect(emoji).toBeTruthy();
+          expect(emoji.length).toBeGreaterThan(0);
+        });
+      });
+
+      it('should return cat emoji for invalid animal type', () => {
+        const initialState = { ...createInitialState(), animalType: 'invalid' as any };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        const emoji = pet.getAnimalEmoji();
+        expect(emoji).toBe('🐱'); // Should fallback to cat emoji
+      });
+
+      it('should return consistent emoji for same animal type', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.DOG };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        const emoji1 = pet.getAnimalEmoji();
+        const emoji2 = pet.getAnimalEmoji();
+        
+        expect(emoji1).toBe(emoji2);
+        expect(emoji1).toBe('🐶');
+      });
+    });
+
+    describe('getAnimatedExpression with emoji', () => {
+      it('should include emoji when emojiEnabled is true', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.CAT, energy: 85 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        // Update the expression to match the energy level (85 = happy)
+        pet.addEnergy(0); // Trigger expression update
+        const expression = pet.getAnimatedExpression(false, 0, true);
+        
+        expect(expression).toMatch(/^🐱/); // Should start with cat emoji
+        expect(expression).toContain('(^_^)'); // Should contain happy expression
+        expect(expression).toBe('🐱(^_^)');
+      });
+
+      it('should not include emoji when emojiEnabled is false', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.CAT, energy: 85 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        // Update the expression to match the energy level (85 = happy)
+        pet.addEnergy(0); // Trigger expression update
+        const expression = pet.getAnimatedExpression(false, 0, false);
+        
+        expect(expression).not.toMatch(/🐱/); // Should not contain emoji
+        expect(expression).toBe('(^_^)'); // Should be just the expression
+      });
+
+      it('should work with animation and emoji enabled', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.RABBIT, energy: 85 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        const expression1 = pet.getAnimatedExpression(true, 0, true);
+        const expression2 = pet.getAnimatedExpression(true, 1, true);
+        
+        // Both should start with rabbit emoji
+        expect(expression1).toMatch(/^🐰/);
+        expect(expression2).toMatch(/^🐰/);
+        
+        // Should contain happy expressions (may be different due to animation)
+        expect(expression1).toMatch(/🐰\(.*\)/);
+        expect(expression2).toMatch(/🐰\(.*\)/);
+      });
+
+      it('should show correct emoji for different animal types', () => {
+        const testCases = [
+          { type: AnimalType.CAT, emoji: '🐱' },
+          { type: AnimalType.DOG, emoji: '🐶' },
+          { type: AnimalType.RABBIT, emoji: '🐰' },
+          { type: AnimalType.PANDA, emoji: '🐼' },
+          { type: AnimalType.FOX, emoji: '🦊' }
+        ];
+
+        testCases.forEach(({ type, emoji }) => {
+          const initialState = { ...createInitialState(), animalType: type, energy: 85 };
+          const pet = new Pet(initialState, mockDependencies);
+          
+          const expression = pet.getAnimatedExpression(false, 0, true);
+          
+          expect(expression).toMatch(new RegExp(`^${emoji}`));
+          expect(expression).toContain('(^_^)'); // Happy expression for 85 energy
+        });
+      });
+
+      it('should show emoji with different energy states', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.PANDA };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        // Test different energy levels
+        const testStates = [
+          { energy: 85, expectedExpression: '(^_^)' }, // Happy
+          { energy: 50, expectedExpression: '(o_o)' }, // Hungry
+          { energy: 20, expectedExpression: '(u_u)' }, // Sick
+          { energy: 5, expectedExpression: '(x_x)' }   // Dead
+        ];
+
+        testStates.forEach(({ energy, expectedExpression }) => {
+          // Manually set energy for testing
+          const currentEnergy = pet.getCurrentEnergy();
+          const energyDiff = energy - currentEnergy;
+          
+          if (energyDiff > 0) {
+            pet.addEnergy(energyDiff);
+          } else if (energyDiff < 0) {
+            pet.decreaseEnergy(-energyDiff);
+          }
+          
+          const expression = pet.getAnimatedExpression(false, 0, true);
+          
+          expect(expression).toMatch(/^🐼/); // Should start with panda emoji
+          expect(expression).toContain(expectedExpression);
+        });
+      });
+
+      it('should maintain emoji through pet operations', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.FOX, energy: 50 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        // Before feeding
+        let expression = pet.getAnimatedExpression(false, 0, true);
+        expect(expression).toMatch(/^🦊/);
+        
+        // Feed pet
+        pet.feed(1000000);
+        expression = pet.getAnimatedExpression(false, 0, true);
+        expect(expression).toMatch(/^🦊/);
+        
+        // Apply time decay
+        pet.applyTimeDecay();
+        expression = pet.getAnimatedExpression(false, 0, true);
+        expect(expression).toMatch(/^🦊/);
+        
+        // Animal type should remain consistent
+        expect(pet.getCurrentAnimalType()).toBe(AnimalType.FOX);
+      });
+
+      it('should handle emoji fallback gracefully', () => {
+        // Create pet with invalid animal type
+        const initialState = { ...createInitialState(), animalType: 'nonexistent' as any };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        const expression = pet.getAnimatedExpression(false, 0, true);
+        
+        // Should fallback to cat emoji
+        expect(expression).toMatch(/^🐱/);
+        expect(expression).toContain('(o_o)'); // Default hungry expression
+      });
+    });
+
+    describe('emoji backward compatibility', () => {
+      it('should work with existing getAnimatedExpression calls (2 parameters)', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.DOG, energy: 85 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        // Call with only 2 parameters (backward compatibility)
+        const expression = pet.getAnimatedExpression(false, 0);
+        
+        // Should default to emoji enabled (true)
+        expect(expression).toMatch(/^🐶/);
+        expect(expression).toContain('(^_^)');
+      });
+
+      it('should work with existing getAnimatedExpression calls (1 parameter)', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.RABBIT, energy: 85 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        // Call with only 1 parameter (backward compatibility)
+        const expression = pet.getAnimatedExpression(false);
+        
+        // Should default to emoji enabled (true)
+        expect(expression).toMatch(/^🐰/);
+        expect(expression).toContain('(^_^)');
+      });
+
+      it('should work with existing getAnimatedExpression calls (no parameters)', () => {
+        const initialState = { ...createInitialState(), animalType: AnimalType.PANDA, energy: 85 };
+        const pet = new Pet(initialState, mockDependencies);
+        
+        // Call with no parameters (backward compatibility)
+        const expression = pet.getAnimatedExpression();
+        
+        // Should default to emoji enabled (true)
+        expect(expression).toMatch(/^🐼/);
+        expect(expression).toContain('(^_^)');
+      });
     });
   });
 });

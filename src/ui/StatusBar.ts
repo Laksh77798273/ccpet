@@ -6,9 +6,9 @@ export class StatusBarFormatter {
   private testMode: boolean;
   private configService: ConfigService;
 
-  constructor(testMode: boolean = false) {
+  constructor(testMode: boolean = false, configService?: ConfigService) {
     this.testMode = testMode;
-    this.configService = new ConfigService();
+    this.configService = configService || new ConfigService();
   }
 
   public formatPetDisplay(state: IPetState, animatedExpression?: string): string {
@@ -42,6 +42,7 @@ export class StatusBarFormatter {
       return lines.join(this.testMode ? '\n' : '\n');
     } catch (error) {
       console.error('Failed to format pet display:', error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       return '(?) ERROR';
     }
   }

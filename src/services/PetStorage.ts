@@ -1,4 +1,5 @@
 import { IPetState } from '../core/Pet';
+import { AnimalType, PET_CONFIG } from '../core/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -38,6 +39,19 @@ export class PetStorage {
       // Handle backward compatibility - add totalLifetimeTokens if missing
       if (parsed.totalLifetimeTokens === undefined) {
         parsed.totalLifetimeTokens = parsed.totalTokensConsumed || 0;
+      }
+      
+      // Handle backward compatibility - add animalType if missing
+      if (parsed.animalType === undefined) {
+        // 为现有用户分配默认动物类型
+        parsed.animalType = PET_CONFIG.ANIMAL.DEFAULT_TYPE;
+        console.log(`Migrating existing pet to default animal type: ${parsed.animalType}`);
+      }
+      
+      // 验证动物类型是否有效
+      if (!Object.values(AnimalType).includes(parsed.animalType)) {
+        console.warn(`Invalid animal type found: ${parsed.animalType}, using default`);
+        parsed.animalType = PET_CONFIG.ANIMAL.DEFAULT_TYPE;
       }
       
       return parsed as IPetState;

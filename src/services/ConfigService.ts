@@ -21,6 +21,7 @@ export interface UserConfig {
   pet: {
     animationEnabled?: boolean;
     decayRate?: number;
+    emojiEnabled?: boolean;
   };
   display: {
     maxLines?: number; // 1-3, default 2
@@ -53,7 +54,8 @@ const DEFAULT_CONFIG: UserConfig = {
   },
   pet: {
     animationEnabled: true,
-    decayRate: 0.0231
+    decayRate: 0.0231,
+    emojiEnabled: true
   },
   display: {
     maxLines: 3,

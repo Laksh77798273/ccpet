@@ -1,6 +1,22 @@
 import { processColorConfig } from '../utils/colors';
 import { ConfigService } from '../services/ConfigService';
 
+// 动物类型枚举
+export enum AnimalType {
+  CAT = 'cat',
+  DOG = 'dog', 
+  RABBIT = 'rabbit',
+  PANDA = 'panda',
+  FOX = 'fox'
+}
+
+// 动物配置接口
+export interface IAnimalConfig {
+  id: AnimalType;
+  name: string;
+  emoji: string;
+}
+
 function getColorConfiguration() {
   try {
     const configService = new ConfigService();
@@ -43,6 +59,15 @@ function getColorConfiguration() {
   }
 }
 
+// 动物类型配置
+export const ANIMAL_CONFIGS: Record<AnimalType, IAnimalConfig> = {
+  [AnimalType.CAT]: { id: AnimalType.CAT, name: '猫', emoji: '🐱' },
+  [AnimalType.DOG]: { id: AnimalType.DOG, name: '狗', emoji: '🐶' },
+  [AnimalType.RABBIT]: { id: AnimalType.RABBIT, name: '兔子', emoji: '🐰' },
+  [AnimalType.PANDA]: { id: AnimalType.PANDA, name: '熊猫', emoji: '🐼' },
+  [AnimalType.FOX]: { id: AnimalType.FOX, name: '狐狸', emoji: '🦊' }
+};
+
 export const PET_CONFIG = {
   INITIAL_ENERGY: 100,
   HAPPY_EXPRESSION_THRESHOLD: 80,
@@ -77,6 +102,9 @@ export const PET_CONFIG = {
   },
   FEEDING: {
     TOKENS_PER_ENERGY: 1000000 // 100万token = 1点能量
+  },
+  ANIMAL: {
+    DEFAULT_TYPE: AnimalType.CAT // 默认动物类型用于向后兼容
   },
   // Processed colors - automatically converted from hex to ANSI escape codes
   COLORS: processColorConfig(getColorConfiguration() as Record<string, string>)

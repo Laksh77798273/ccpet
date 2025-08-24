@@ -1,8 +1,9 @@
-import { PET_CONFIG } from './config';
+import { PET_CONFIG, AnimalType, ANIMAL_CONFIGS } from './config';
 
 export interface IPetState {
   energy: number;
   expression: string;
+  animalType: AnimalType; // 动物类型字段
   lastFeedTime: Date;
   totalTokensConsumed: number;
   accumulatedTokens: number; // 当前累积的token数（用于下次能量增加）
@@ -31,6 +32,7 @@ export class Pet {
   constructor(initialState: IPetState, dependencies: IPetDependencies) {
     this.state = { ...initialState };
     this.deps = dependencies;
+    this._updateExpression(); // Ensure expression matches energy level
   }
 
   public getState(): IPetState {
@@ -160,6 +162,21 @@ export class Pet {
     return this.state.energy;
   }
 
+  public getCurrentAnimalType(): AnimalType {
+    return this.state.animalType;
+  }
+
+  public static getRandomAnimalType(): AnimalType {
+    const animalTypes = Object.values(AnimalType);
+    const randomIndex = Math.floor(Math.random() * animalTypes.length);
+    return animalTypes[randomIndex];
+  }
+
+  public getAnimalEmoji(): string {
+    const animalConfig = ANIMAL_CONFIGS[this.state.animalType];
+    return animalConfig?.emoji || ANIMAL_CONFIGS[AnimalType.CAT].emoji; // 默认为猫emoji
+  }
+
   public isDead(): boolean {
     return this.state.energy === 0;
   }
@@ -167,9 +184,13 @@ export class Pet {
   public resetToInitialState(): void {
     try {
       const now = new Date();
+      // 重置时随机选择一个新的动物类型
+      const newAnimalType = Pet.getRandomAnimalType();
+      
       this.state = {
         energy: this.deps.config.INITIAL_ENERGY,
         expression: this.deps.config.STATE_EXPRESSIONS.HAPPY,
+        animalType: newAnimalType, // 随机分配新的动物类型
         lastFeedTime: now,
         totalTokensConsumed: 0,
         accumulatedTokens: 0,
@@ -179,6 +200,7 @@ export class Pet {
         sessionTotalOutputTokens: 0,
         sessionTotalCachedTokens: 0
       };
+      console.log(`Pet reborn as ${newAnimalType} type`); // 调试日志
       this._updateExpression();
       this._notify();
     } catch (error) {
@@ -188,6 +210,11 @@ export class Pet {
   }
 
   private _updateExpression(): void {
+    // Guard against null/undefined config (for error testing)
+    if (!this.deps?.config) {
+      return;
+    }
+    
     const { STATE_THRESHOLDS, STATE_EXPRESSIONS } = this.deps.config;
     
     if (this.state.energy >= STATE_THRESHOLDS.HAPPY) {
@@ -202,28 +229,38 @@ export class Pet {
   }
 
   // 获取当前状态对应的动画表情（如果支持动画的话）
-  public getAnimatedExpression(animationEnabled: boolean = false, frameIndex: number = 0): string {
+  public getAnimatedExpression(animationEnabled: boolean = false, frameIndex: number = 0, emojiEnabled: boolean = true): string {
     const { STATE_THRESHOLDS, ANIMATED_EXPRESSIONS } = this.deps.config;
     
+    let baseExpression: string;
+    
     if (!animationEnabled || !ANIMATED_EXPRESSIONS) {
-      return this.state.expression;
-    }
-    
-    let animationArray: readonly string[];
-    
-    if (this.state.energy >= STATE_THRESHOLDS.HAPPY) {
-      animationArray = ANIMATED_EXPRESSIONS.HAPPY;
-    } else if (this.state.energy >= STATE_THRESHOLDS.HUNGRY) {
-      animationArray = ANIMATED_EXPRESSIONS.HUNGRY;
-    } else if (this.state.energy >= STATE_THRESHOLDS.SICK) {
-      animationArray = ANIMATED_EXPRESSIONS.SICK;
+      baseExpression = this.state.expression;
     } else {
-      animationArray = ANIMATED_EXPRESSIONS.DEAD;
+      let animationArray: readonly string[];
+      
+      if (this.state.energy >= STATE_THRESHOLDS.HAPPY) {
+        animationArray = ANIMATED_EXPRESSIONS.HAPPY;
+      } else if (this.state.energy >= STATE_THRESHOLDS.HUNGRY) {
+        animationArray = ANIMATED_EXPRESSIONS.HUNGRY;
+      } else if (this.state.energy >= STATE_THRESHOLDS.SICK) {
+        animationArray = ANIMATED_EXPRESSIONS.SICK;
+      } else {
+        animationArray = ANIMATED_EXPRESSIONS.DEAD;
+      }
+      
+      // 使用帧索引循环显示动画序列
+      const index = frameIndex % animationArray.length;
+      baseExpression = animationArray[index];
     }
     
-    // 使用帧索引循环显示动画序列
-    const index = frameIndex % animationArray.length;
-    return animationArray[index];
+    // 如果emoji被启用，添加动物emoji前缀
+    if (emojiEnabled) {
+      const animalEmoji = this.getAnimalEmoji();
+      return `${animalEmoji}${baseExpression}`;
+    } else {
+      return baseExpression;
+    }
   }
 
   private _notify(): void {
