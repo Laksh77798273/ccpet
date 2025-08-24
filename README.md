@@ -103,7 +103,7 @@ ccpet config set display.line3.enabled true            # Enable/disable line 3
 ccpet config set display.line3.items "total"           # What to show on line 3
 ```
 
-**Available Display Items:** `input`, `output`, `cached`, `total`, `context-length`, `context-percentage`, `context-percentage-usable`
+**Available Display Items:** `input`, `output`, `cached`, `total`, `context-length`, `context-percentage`, `context-percentage-usable`, `cost`
 
 ## Status Display
 
@@ -111,10 +111,10 @@ ccpet config set display.line3.items "total"           # What to show on line 3
 ```text
 (^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
 Input: 2847 Output: 1256 Cached: 512 Total: 4615
-Ctx: 2.4K Ctx: 12.0% Ctx(u): 88.5%
+Ctx: 2.4K Ctx: 12.0% Ctx(u): 88.5% Cost: $0.15
 ```
 
-**Note**: Context metrics (Ctx(u)) now display in light green by default.
+**Note**: Context metrics (Ctx(u)) now display in light green by default. Cost metrics show the total USD cost of your current session.
 
 ### Single Line (Minimal)
 Configure with: `ccpet config set display.maxLines 1`

@@ -92,6 +92,14 @@ export class StatusBarFormatter {
       };
     }
     
+    // Add cost information
+    if (state.sessionTotalCostUsd !== undefined) {
+      sessionData['cost'] = {
+        value: `$${state.sessionTotalCostUsd.toFixed(2)}`,
+        color: PET_CONFIG.COLORS.COST
+      };
+    }
+    
     // Add context metrics
     if (state.contextLength !== undefined) {
       sessionData['context-length'] = {
@@ -125,13 +133,15 @@ export class StatusBarFormatter {
         const data = sessionData[item];
         let label: string;
         
-        // Custom labels for context items
+        // Custom labels for items
         if (item === 'context-length') {
           label = 'Ctx';
         } else if (item === 'context-percentage') {
           label = 'Ctx';
         } else if (item === 'context-percentage-usable') {
           label = 'Ctx(u)';
+        } else if (item === 'cost') {
+          label = 'Cost';
         } else {
           label = item.charAt(0).toUpperCase() + item.slice(1);
         }

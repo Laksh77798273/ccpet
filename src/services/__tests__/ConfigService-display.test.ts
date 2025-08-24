@@ -135,7 +135,7 @@ describe('ConfigService Display Configuration', () => {
     expect(config.display).toEqual({
       maxLines: 3,
       line2: { enabled: true, items: ['input', 'output', 'cached', 'total'] },
-      line3: { enabled: true, items: ['context-length', 'context-percentage', 'context-percentage-usable'] }
+      line3: { enabled: true, items: ['context-length', 'context-percentage', 'context-percentage-usable', 'cost'] }
     });
   });
 });

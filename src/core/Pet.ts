@@ -14,6 +14,7 @@ export interface IPetState {
   contextLength?: number; // 当前上下文长度（token数）
   contextPercentage?: number; // 上下文使用百分比（基于200k限制）
   contextPercentageUsable?: number; // 可用上下文使用百分比（基于160k限制）
+  sessionTotalCostUsd?: number; // 当前会话总费用（美元）
 }
 
 interface IPetDependencies {

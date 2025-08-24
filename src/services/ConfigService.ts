@@ -16,6 +16,7 @@ export interface UserConfig {
     contextLength?: string;
     contextPercentage?: string;
     contextPercentageUsable?: string;
+    cost?: string;
   };
   pet: {
     animationEnabled?: boolean;
@@ -47,7 +48,8 @@ const DEFAULT_CONFIG: UserConfig = {
     sessionTotal: '#FFFFFF',
     contextLength: '#00DDFF',
     contextPercentage: '#0099DD',
-    contextPercentageUsable: '#90EE90'
+    contextPercentageUsable: '#90EE90',
+    cost: '#FFD700'
   },
   pet: {
     animationEnabled: true,
@@ -61,7 +63,7 @@ const DEFAULT_CONFIG: UserConfig = {
     },
     line3: {
       enabled: true,
-      items: ['context-length', 'context-percentage', 'context-percentage-usable']
+      items: ['context-length', 'context-percentage', 'context-percentage-usable', 'cost']
     }
   }
 };

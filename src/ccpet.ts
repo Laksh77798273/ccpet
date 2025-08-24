@@ -123,6 +123,7 @@ class ClaudeCodeStatusLine {
       state.sessionTotalInputTokens = tokenMetrics.sessionTotalInputTokens;
       state.sessionTotalOutputTokens = tokenMetrics.sessionTotalOutputTokens;
       state.sessionTotalCachedTokens = tokenMetrics.sessionTotalCachedTokens;
+      state.sessionTotalCostUsd = claudeCodeInput.cost.total_cost_usd;
       
       // Calculate context metrics based on ccstatusline algorithms
       state.contextLength = tokenMetrics.contextLength;

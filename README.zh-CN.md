@@ -103,7 +103,7 @@ ccpet config set display.line3.enabled true            # 启用/禁用第3行
 ccpet config set display.line3.items "total"           # 第3行显示内容
 ```
 
-**可用的显示项目：** `input`, `output`, `cached`, `total`, `context-length`, `context-percentage`, `context-percentage-usable`
+**可用的显示项目：** `input`, `output`, `cached`, `total`, `context-length`, `context-percentage`, `context-percentage-usable`, `cost`
 
 ## 状态显示
 
@@ -111,10 +111,10 @@ ccpet config set display.line3.items "total"           # 第3行显示内容
 ```text
 (^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
 Input: 2847 Output: 1256 Cached: 512 Total: 4615
-Ctx: 2.4K Ctx: 12.0% Ctx(u): 88.5%
+Ctx: 2.4K Ctx: 12.0% Ctx(u): 88.5% Cost: $0.15
 ```
 
-**注意**: 上下文指标 (Ctx(u)) 现在默认显示为浅绿色。
+**注意**: 上下文指标 (Ctx(u)) 现在默认显示为浅绿色。成本指标显示当前会话的总USD费用。
 
 ### 单行显示（极简）
 配置：`ccpet config set display.maxLines 1`
