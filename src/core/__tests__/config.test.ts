@@ -52,7 +52,7 @@ describe('config.ts', () => {
     expect(PET_CONFIG.COLORS.PET_EXPRESSION).toMatch(/\u001b\[1m\u001b\[38;(2;255;255;0|5;11)m/);
     expect(PET_CONFIG.COLORS.ENERGY_BAR).toMatch(/\u001b\[38;(2;0;255;0|5;10)m/);
     expect(PET_CONFIG.COLORS.ENERGY_VALUE).toMatch(/\u001b\[38;(2;0;255;255|5;14)m/);
-    expect(PET_CONFIG.COLORS.ACCUMULATED_TOKENS).toMatch(/\u001b\[38;(2;119;136;153|5;103)m/);
+    expect(PET_CONFIG.COLORS.ACCUMULATED_TOKENS).toMatch(/\u001b\[38;(2;119;136;153|5;109)m/);
     expect(PET_CONFIG.COLORS.LIFETIME_TOKENS).toMatch(/\u001b\[38;(2;255;0;255|5;13)m/);
     expect(PET_CONFIG.COLORS.RESET).toBe('\u001b[0m');
   });
@@ -73,7 +73,7 @@ describe('config.ts', () => {
     expect(PET_CONFIG.COLORS.PET_EXPRESSION).toMatch(/\u001b\[1m\u001b\[38;(2;255;255;0|5;11)m/);
     expect(PET_CONFIG.COLORS.ENERGY_BAR).toMatch(/\u001b\[38;(2;0;255;0|5;10)m/);
     expect(PET_CONFIG.COLORS.ENERGY_VALUE).toMatch(/\u001b\[38;(2;0;255;255|5;14)m/);
-    expect(PET_CONFIG.COLORS.ACCUMULATED_TOKENS).toMatch(/\u001b\[38;(2;119;136;153|5;103)m/);
+    expect(PET_CONFIG.COLORS.ACCUMULATED_TOKENS).toMatch(/\u001b\[38;(2;119;136;153|5;109)m/);
     expect(PET_CONFIG.COLORS.LIFETIME_TOKENS).toMatch(/\u001b\[38;(2;255;0;255|5;13)m/);
   });
 
