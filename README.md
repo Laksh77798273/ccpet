@@ -151,6 +151,10 @@ npm run build        # Build distribution files
 npm run watch        # Build and watch for changes
 ```
 
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=terryso/ccpet&type=Date)](https://www.star-history.com/#terryso/ccpet&Date)
+
 ## License
 
 MIT License
