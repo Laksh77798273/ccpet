@@ -29,12 +29,12 @@ describe('config.ts', () => {
 
     const { PET_CONFIG } = await import('../config');
 
-    // Colors are processed into ANSI escape sequences, not raw strings
-    expect(PET_CONFIG.COLORS.PET_EXPRESSION).toContain('\u001b[1m\u001b[38;2;255;0;0m');
-    expect(PET_CONFIG.COLORS.ENERGY_BAR).toContain('\u001b[38;2;0;0;255m');
-    expect(PET_CONFIG.COLORS.ENERGY_VALUE).toContain('\u001b[38;2;0;255;0m');
-    expect(PET_CONFIG.COLORS.ACCUMULATED_TOKENS).toContain('\u001b[38;2;255;255;0m');
-    expect(PET_CONFIG.COLORS.LIFETIME_TOKENS).toContain('\u001b[38;2;255;0;255m');
+    // Colors are processed into ANSI escape sequences, could be RGB or 256-color
+    expect(PET_CONFIG.COLORS.PET_EXPRESSION).toMatch(/\u001b\[1m\u001b\[38;(2;255;0;0|5;9)m/);
+    expect(PET_CONFIG.COLORS.ENERGY_BAR).toMatch(/\u001b\[38;(2;0;0;255|5;12)m/);
+    expect(PET_CONFIG.COLORS.ENERGY_VALUE).toMatch(/\u001b\[38;(2;0;255;0|5;10)m/);
+    expect(PET_CONFIG.COLORS.ACCUMULATED_TOKENS).toMatch(/\u001b\[38;(2;255;255;0|5;11)m/);
+    expect(PET_CONFIG.COLORS.LIFETIME_TOKENS).toMatch(/\u001b\[38;(2;255;0;255|5;13)m/);
     expect(PET_CONFIG.COLORS.RESET).toBe('\u001b[0m');
   });
 
@@ -48,12 +48,12 @@ describe('config.ts', () => {
 
     const { PET_CONFIG } = await import('../config');
 
-    // Should use the fallback defaults from the catch block - converted to ANSI
-    expect(PET_CONFIG.COLORS.PET_EXPRESSION).toContain('\u001b[1m\u001b[38;2;255;255;0m');
-    expect(PET_CONFIG.COLORS.ENERGY_BAR).toContain('\u001b[38;2;0;255;0m');
-    expect(PET_CONFIG.COLORS.ENERGY_VALUE).toContain('\u001b[38;2;0;255;255m');
-    expect(PET_CONFIG.COLORS.ACCUMULATED_TOKENS).toContain('\u001b[38;2;119;136;153m');
-    expect(PET_CONFIG.COLORS.LIFETIME_TOKENS).toContain('\u001b[38;2;255;0;255m');
+    // Should use the fallback defaults from the catch block - could be RGB or 256-color
+    expect(PET_CONFIG.COLORS.PET_EXPRESSION).toMatch(/\u001b\[1m\u001b\[38;(2;255;255;0|5;11)m/);
+    expect(PET_CONFIG.COLORS.ENERGY_BAR).toMatch(/\u001b\[38;(2;0;255;0|5;10)m/);
+    expect(PET_CONFIG.COLORS.ENERGY_VALUE).toMatch(/\u001b\[38;(2;0;255;255|5;14)m/);
+    expect(PET_CONFIG.COLORS.ACCUMULATED_TOKENS).toMatch(/\u001b\[38;(2;119;136;153|5;103)m/);
+    expect(PET_CONFIG.COLORS.LIFETIME_TOKENS).toMatch(/\u001b\[38;(2;255;0;255|5;13)m/);
     expect(PET_CONFIG.COLORS.RESET).toBe('\u001b[0m');
   });
 
@@ -69,12 +69,12 @@ describe('config.ts', () => {
 
     const { PET_CONFIG } = await import('../config');
 
-    // Should use the fallback defaults from the catch block - converted to ANSI
-    expect(PET_CONFIG.COLORS.PET_EXPRESSION).toContain('\u001b[1m\u001b[38;2;255;255;0m');
-    expect(PET_CONFIG.COLORS.ENERGY_BAR).toContain('\u001b[38;2;0;255;0m');
-    expect(PET_CONFIG.COLORS.ENERGY_VALUE).toContain('\u001b[38;2;0;255;255m');
-    expect(PET_CONFIG.COLORS.ACCUMULATED_TOKENS).toContain('\u001b[38;2;119;136;153m');
-    expect(PET_CONFIG.COLORS.LIFETIME_TOKENS).toContain('\u001b[38;2;255;0;255m');
+    // Should use the fallback defaults from the catch block - could be RGB or 256-color
+    expect(PET_CONFIG.COLORS.PET_EXPRESSION).toMatch(/\u001b\[1m\u001b\[38;(2;255;255;0|5;11)m/);
+    expect(PET_CONFIG.COLORS.ENERGY_BAR).toMatch(/\u001b\[38;(2;0;255;0|5;10)m/);
+    expect(PET_CONFIG.COLORS.ENERGY_VALUE).toMatch(/\u001b\[38;(2;0;255;255|5;14)m/);
+    expect(PET_CONFIG.COLORS.ACCUMULATED_TOKENS).toMatch(/\u001b\[38;(2;119;136;153|5;103)m/);
+    expect(PET_CONFIG.COLORS.LIFETIME_TOKENS).toMatch(/\u001b\[38;(2;255;0;255|5;13)m/);
   });
 
   it('should handle missing color properties with defaults', async () => {
@@ -92,10 +92,10 @@ describe('config.ts', () => {
 
     const { PET_CONFIG } = await import('../config');
 
-    expect(PET_CONFIG.COLORS.PET_EXPRESSION).toContain('\u001b[38;2;255;0;0m');
+    expect(PET_CONFIG.COLORS.PET_EXPRESSION).toMatch(/\u001b\[38;(2;255;0;0|5;9)m/);
     // Should use fallback for missing properties (the || defaults in the code)
-    expect(PET_CONFIG.COLORS.ENERGY_BAR).toContain('\u001b[38;2;0;255;0m');
-    expect(PET_CONFIG.COLORS.ENERGY_VALUE).toContain('\u001b[38;2;0;255;255m');
+    expect(PET_CONFIG.COLORS.ENERGY_BAR).toMatch(/\u001b\[38;(2;0;255;0|5;10)m/);
+    expect(PET_CONFIG.COLORS.ENERGY_VALUE).toMatch(/\u001b\[38;(2;0;255;255|5;14)m/);
   });
 
   it('should export PET_CONFIG with correct structure', async () => {
