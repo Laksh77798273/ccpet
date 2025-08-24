@@ -6,7 +6,7 @@ export class ResetCommand {
   name = 'reset';
   description = 'Reset pet to initial state';
 
-  async execute(args: string[]): Promise<void> {
+  async execute(_args: string[]): Promise<void> {
     try {
       const petDir = path.join(os.homedir(), '.claude-pet');
       const stateFile = path.join(petDir, 'pet-state.json');
@@ -44,7 +44,8 @@ export class ResetCommand {
       }
 
     } catch (error) {
-      console.error('❌ Failed to reset pet:', error.message);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('❌ Failed to reset pet:', errorMessage);
       process.exit(1);
     }
   }

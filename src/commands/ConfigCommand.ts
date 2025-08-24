@@ -69,7 +69,8 @@ export class ConfigCommand {
       console.log('Current configuration:');
       console.log(config);
     } catch (error) {
-      console.error('Failed to list configuration:', error.message);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Failed to list configuration:', errorMessage);
       process.exit(1);
     }
   }
@@ -104,7 +105,8 @@ export class ConfigCommand {
         process.exit(1);
       }
     } catch (error) {
-      console.error('Failed to set configuration:', error.message);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Failed to set configuration:', errorMessage);
       process.exit(1);
     }
   }
@@ -114,7 +116,8 @@ export class ConfigCommand {
       this.configService.resetConfig();
       console.log('✅ Configuration reset to defaults');
     } catch (error) {
-      console.error('Failed to reset configuration:', error.message);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Failed to reset configuration:', errorMessage);
       process.exit(1);
     }
   }
@@ -124,7 +127,8 @@ export class ConfigCommand {
       const path = this.configService.getConfigPath();
       console.log(`Configuration file: ${path}`);
     } catch (error) {
-      console.error('Failed to get configuration path:', error.message);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Failed to get configuration path:', errorMessage);
       process.exit(1);
     }
   }

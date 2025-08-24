@@ -4,7 +4,7 @@ export class CheckCommand {
   name = 'check';
   description = 'Manually check pet status without consuming Claude Code tokens';
 
-  async execute(args: string[]): Promise<void> {
+  async execute(_args: string[]): Promise<void> {
     try {
       console.log('🐾 检查宠物状态...\n');
       
@@ -17,7 +17,7 @@ export class CheckCommand {
       console.log('📝 在Claude Code中活跃使用可以喂养你的宠物');
       
       // 显示距离上次喂食的时间
-      const petState = statusLine.pet ? statusLine.pet.getState() : null;
+      const petState = (statusLine as any).pet ? (statusLine as any).pet.getState() : null;
       if (petState && petState.lastFeedTime) {
         const timeSinceLastFeed = Date.now() - new Date(petState.lastFeedTime).getTime();
         const minutes = Math.floor(timeSinceLastFeed / (1000 * 60));
@@ -31,7 +31,8 @@ export class CheckCommand {
       }
       
     } catch (error) {
-      console.error('❌ 检查宠物状态失败:', error.message);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('❌ 检查宠物状态失败:', errorMessage);
       process.exit(1);
     }
   }

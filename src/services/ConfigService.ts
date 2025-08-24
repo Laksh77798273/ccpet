@@ -76,7 +76,8 @@ export class ConfigService {
       this.cachedConfig = this.mergeWithDefaults(userConfig);
       return this.cachedConfig;
     } catch (error) {
-      console.warn('Failed to load config, using defaults:', error.message);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.warn('Failed to load config, using defaults:', errorMessage);
       this.cachedConfig = DEFAULT_CONFIG;
       return DEFAULT_CONFIG;
     }
@@ -111,9 +112,9 @@ export class ConfigService {
     this.saveConfig(config);
   }
 
-  setPetConfig(key: keyof UserConfig['pet'], value: any): void {
+  setPetConfig(key: keyof UserConfig['pet'], value: boolean | number): void {
     const config = this.loadConfig();
-    config.pet[key] = value;
+    (config.pet as any)[key] = value;
     this.saveConfig(config);
   }
 
