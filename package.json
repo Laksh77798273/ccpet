@@ -4,8 +4,7 @@
   "description": "A Claude Code status line script that displays a virtual pet",
   "main": "dist/ccpet.js",
   "bin": {
-    "ccpet": "dist/ccpet.js",
-    "ccpet-check": "bin/ccpet-check"
+    "ccpet": "dist/cli.js"
   },
   "files": [
     "/dist",

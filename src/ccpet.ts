@@ -231,7 +231,7 @@ function readStdin(): Promise<string> {
 }
 
 // Main execution for CLI
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   try {
     // Read Claude Code JSON input from stdin
     const inputData = await readStdin();
@@ -300,9 +300,7 @@ export function deactivate() {
   // Clean up if needed
 }
 
-// Run if this is the main module (CLI mode)
-if (require.main === module) {
-  main();
-}
+// Note: main() is now called explicitly from cli.ts
+// The automatic execution has been removed to prevent duplicate calls
 
 export { ClaudeCodeStatusLine };

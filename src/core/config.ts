@@ -1,20 +1,39 @@
 import { processColorConfig } from '../utils/colors';
+import { ConfigService } from '../services/ConfigService';
 
-// Raw color configuration using hex values
-// Users can easily modify these hex colors using standard format like #CC00FF
-// Add ":bright" suffix for bright colors (e.g., "#FFFFFF:bright")
-const RAW_COLORS = {
-  PET_EXPRESSION: '#FFFF00:bright:bold', // bright yellow and bold
-  ENERGY_BAR: '#00FF00', // green
-  ENERGY_VALUE: '#00FFFF', // blue
-  ACCUMULATED_TOKENS: '#778899', // cyan
-  LIFETIME_TOKENS: '#FF00FF', // magenta
-  SESSION_INPUT: '#00FF00', // green
-  SESSION_OUTPUT: '#FFFF00', // yellow
-  SESSION_CACHED: '#F4A460', // cyan
-  SESSION_TOTAL: '#FFFFFF', // white
-  RESET: 'RESET' // reset color
-} as const;
+function getColorConfiguration() {
+  try {
+    const configService = new ConfigService();
+    const userConfig = configService.getConfig();
+    
+    return {
+      PET_EXPRESSION: userConfig.colors.petExpression || '#FFFF00:bright:bold',
+      ENERGY_BAR: userConfig.colors.energyBar || '#00FF00',
+      ENERGY_VALUE: userConfig.colors.energyValue || '#00FFFF',
+      ACCUMULATED_TOKENS: userConfig.colors.accumulatedTokens || '#778899',
+      LIFETIME_TOKENS: userConfig.colors.lifetimeTokens || '#FF00FF',
+      SESSION_INPUT: userConfig.colors.sessionInput || '#00FF00',
+      SESSION_OUTPUT: userConfig.colors.sessionOutput || '#FFFF00',
+      SESSION_CACHED: userConfig.colors.sessionCached || '#F4A460',
+      SESSION_TOTAL: userConfig.colors.sessionTotal || '#FFFFFF',
+      RESET: 'RESET' // reset color
+    };
+  } catch (error) {
+    // Fallback to defaults if config loading fails
+    return {
+      PET_EXPRESSION: '#FFFF00:bright:bold',
+      ENERGY_BAR: '#00FF00',
+      ENERGY_VALUE: '#00FFFF',
+      ACCUMULATED_TOKENS: '#778899',
+      LIFETIME_TOKENS: '#FF00FF',
+      SESSION_INPUT: '#00FF00',
+      SESSION_OUTPUT: '#FFFF00',
+      SESSION_CACHED: '#F4A460',
+      SESSION_TOTAL: '#FFFFFF',
+      RESET: 'RESET'
+    };
+  }
+}
 
 export const PET_CONFIG = {
   INITIAL_ENERGY: 100,
@@ -52,7 +71,7 @@ export const PET_CONFIG = {
     TOKENS_PER_ENERGY: 1000000 // 100万token = 1点能量
   },
   // Processed colors - automatically converted from hex to ANSI escape codes
-  COLORS: processColorConfig(RAW_COLORS as Record<string, string>)
+  COLORS: processColorConfig(getColorConfiguration() as Record<string, string>)
 } as const;
 
 export const LOGGER_CONFIG = {
