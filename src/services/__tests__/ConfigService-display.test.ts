@@ -116,10 +116,10 @@ describe('ConfigService Display Configuration', () => {
     const newConfigService = new ConfigService();
     const config = newConfigService.getConfig();
 
-    expect(config.display.maxLines).toBe(2); // Default
+    expect(config.display.maxLines).toBe(3); // Default
     expect(config.display.line2?.enabled).toBe(true); // Default
     expect(config.display.line2?.items).toEqual(['input']); // User setting
-    expect(config.display.line3?.enabled).toBe(false); // Default
+    expect(config.display.line3?.enabled).toBe(true); // Default
   });
 
   it('should handle completely missing display config', () => {
@@ -133,9 +133,9 @@ describe('ConfigService Display Configuration', () => {
     const config = newConfigService.getConfig();
 
     expect(config.display).toEqual({
-      maxLines: 2,
+      maxLines: 3,
       line2: { enabled: true, items: ['input', 'output', 'cached', 'total'] },
-      line3: { enabled: false, items: [] }
+      line3: { enabled: true, items: ['context-length', 'context-percentage', 'context-percentage-usable'] }
     });
   });
 });

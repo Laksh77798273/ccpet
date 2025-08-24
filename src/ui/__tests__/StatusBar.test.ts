@@ -81,6 +81,66 @@ describe('StatusBarFormatter Component', () => {
 
       expect(result).toBe('(^_^) ●●●●●●●●○○ 75.00 (1.0K) 💖1.0K');
     });
+
+    it('should include context metrics when available and configured', () => {
+      const formatter = new StatusBarFormatter(true);
+      // Mock the ConfigService to enable line3 with context metrics
+      const configService = (formatter as any).configService;
+      configService.getConfig = vi.fn().mockReturnValue({
+        display: {
+          maxLines: 3,
+          line2: { enabled: true, items: ['input', 'output', 'cached', 'total'] },
+          line3: { enabled: true, items: ['context-length', 'context-percentage', 'context-percentage-usable'] }
+        }
+      });
+      
+      const testState = createMockPetState({
+        expression: '(^_^)',
+        energy: 75,
+        accumulatedTokens: 1000,
+        totalLifetimeTokens: 1000,
+        sessionTotalInputTokens: 2500,
+        sessionTotalOutputTokens: 1500,
+        sessionTotalCachedTokens: 500,
+        contextLength: 50000,
+        contextPercentage: 25.0,
+        contextPercentageUsable: 31.25
+      });
+
+      const result = formatter.formatPetDisplay(testState);
+
+      expect(result).toBe('(^_^) ●●●●●●●●○○ 75.00 (1.0K) 💖1.0K\nInput: 2.5K Output: 1.5K Cached: 500 Total: 4.5K\nCtx: 50.0K Ctx: 25.0% Ctx(u): 31.3%');
+    });
+
+    it('should display context percentages when value is 0', () => {
+      const formatter = new StatusBarFormatter(true);
+      // Mock the ConfigService to enable line3 with context metrics
+      const configService = (formatter as any).configService;
+      configService.getConfig = vi.fn().mockReturnValue({
+        display: {
+          maxLines: 3,
+          line2: { enabled: true, items: ['input', 'output', 'cached', 'total'] },
+          line3: { enabled: true, items: ['context-length', 'context-percentage', 'context-percentage-usable'] }
+        }
+      });
+      
+      const testState = createMockPetState({
+        expression: '(^_^)',
+        energy: 75,
+        accumulatedTokens: 1000,
+        totalLifetimeTokens: 1000,
+        sessionTotalInputTokens: 2500,
+        sessionTotalOutputTokens: 1500,
+        sessionTotalCachedTokens: 500,
+        contextLength: 0,
+        contextPercentage: 0,
+        contextPercentageUsable: 0
+      });
+
+      const result = formatter.formatPetDisplay(testState);
+
+      expect(result).toBe('(^_^) ●●●●●●●●○○ 75.00 (1.0K) 💖1.0K\nInput: 2.5K Output: 1.5K Cached: 500 Total: 4.5K\nCtx: 0 Ctx: 0.0% Ctx(u): 0.0%');
+    });
   });
 
   describe('generateEnergyBar', () => {

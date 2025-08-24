@@ -103,15 +103,18 @@ ccpet config set display.line3.enabled true            # Enable/disable line 3
 ccpet config set display.line3.items "total"           # What to show on line 3
 ```
 
-**Available Display Items:** `input`, `output`, `cached`, `total`
+**Available Display Items:** `input`, `output`, `cached`, `total`, `context-length`, `context-percentage`, `context-percentage-usable`
 
 ## Status Display
 
-### Default 2-Line Display
+### Default 3-Line Display
 ```text
 (^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
 Input: 2847 Output: 1256 Cached: 512 Total: 4615
+Ctx: 2.4K Ctx: 12.0% Ctx(u): 88.5%
 ```
+
+**Note**: Context metrics (Ctx(u)) now display in light green by default.
 
 ### Single Line (Minimal)
 Configure with: `ccpet config set display.maxLines 1`
@@ -119,17 +122,23 @@ Configure with: `ccpet config set display.maxLines 1`
 (^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
 ```
 
-### 3-Line Custom Display
+### 2-Line Display (Minimal)
+Configure with: `ccpet config set display.maxLines 2`
+```text
+(^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
+Input: 2847 Output: 1256 Cached: 512 Total: 4615
+```
+
+### Custom 3-Line Display
 Configure with:
 ```bash
-ccpet config set display.maxLines 3
 ccpet config set display.line2.items "input,output"
-ccpet config set display.line3.items "total"
+ccpet config set display.line3.items "total,context-percentage-usable"
 ```
 ```text
 (^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
 Input: 2847 Output: 1256
-Total: 4615
+Total: 4615 Ctx(u): 88.5%
 ```
 
 **Display Format:**
@@ -173,6 +182,10 @@ npm run test:coverage # Run tests with coverage report
 npm run build        # Build distribution files
 npm run watch        # Build and watch for changes
 ```
+
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=terryso/ccpet&type=Date)](https://www.star-history.com/#terryso/ccpet&Date)
 
 ## License
 

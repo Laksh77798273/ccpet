@@ -124,6 +124,17 @@ class ClaudeCodeStatusLine {
       state.sessionTotalOutputTokens = tokenMetrics.sessionTotalOutputTokens;
       state.sessionTotalCachedTokens = tokenMetrics.sessionTotalCachedTokens;
       
+      // Calculate context metrics based on ccstatusline algorithms
+      state.contextLength = tokenMetrics.contextLength;
+      // Only calculate percentages if contextLength is defined
+      if (tokenMetrics.contextLength !== undefined) {
+        state.contextPercentage = Math.min(100, (tokenMetrics.contextLength / 200000) * 100);
+        state.contextPercentageUsable = Math.min(100, (tokenMetrics.contextLength / 160000) * 100);
+      } else {
+        state.contextPercentage = undefined;
+        state.contextPercentageUsable = undefined;
+      }
+      
       // 启用动画并获取当前帧索引
       const animationEnabled = this.animationCounter.shouldEnableAnimation();
       const frameIndex = this.animationCounter.getFrameIndex();

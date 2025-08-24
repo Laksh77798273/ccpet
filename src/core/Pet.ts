@@ -11,6 +11,9 @@ export interface IPetState {
   sessionTotalInputTokens?: number; // 当前会话总输入token
   sessionTotalOutputTokens?: number; // 当前会话总输出token
   sessionTotalCachedTokens?: number; // 当前会话总缓存token
+  contextLength?: number; // 当前上下文长度（token数）
+  contextPercentage?: number; // 上下文使用百分比（基于200k限制）
+  contextPercentageUsable?: number; // 可用上下文使用百分比（基于160k限制）
 }
 
 interface IPetDependencies {

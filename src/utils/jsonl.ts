@@ -10,6 +10,7 @@ export interface TokenMetrics {
   sessionTotalInputTokens: number;
   sessionTotalOutputTokens: number;
   sessionTotalCachedTokens: number;
+  contextLength: number; // Current context length in tokens (from most recent message)
 }
 
 interface SessionTracker {
@@ -91,6 +92,7 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
   let sessionTotalInputTokens = 0;
   let sessionTotalOutputTokens = 0;
   let sessionTotalCachedTokens = 0;
+  let contextLength = 0;
   let sessionId = '';
   let lastProcessedUuid = '';
   let lastProcessedTimestamp = '';
@@ -104,7 +106,8 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
         totalTokens: 0,
         sessionTotalInputTokens: 0,
         sessionTotalOutputTokens: 0,
-        sessionTotalCachedTokens: 0
+        sessionTotalCachedTokens: 0,
+        contextLength: 0
       };
     }
 
@@ -138,7 +141,8 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
         totalTokens: 0,
         sessionTotalInputTokens: 0,
         sessionTotalOutputTokens: 0,
-        sessionTotalCachedTokens: 0
+        sessionTotalCachedTokens: 0,
+        contextLength: 0
       };
     }
 
@@ -155,6 +159,12 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
         sessionTotalInputTokens += usage.input_tokens || 0;
         sessionTotalOutputTokens += usage.output_tokens || 0;
         sessionTotalCachedTokens += (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0);
+        
+        // Update context length from the most recent message (last processed)
+        // Context length = input tokens + cached tokens for current context
+        contextLength = (usage.input_tokens || 0) + 
+                       (usage.cache_read_input_tokens || 0) + 
+                       (usage.cache_creation_input_tokens || 0);
       }
 
       // If we have a tracker, skip until we find the last processed message
@@ -200,7 +210,8 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
       totalTokens: inputTokens + outputTokens + cachedTokens,
       sessionTotalInputTokens,
       sessionTotalOutputTokens,
-      sessionTotalCachedTokens
+      sessionTotalCachedTokens,
+      contextLength
     };
   } catch (error) {
     console.error('Failed to process JSONL transcript:', error);
@@ -211,7 +222,8 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
       totalTokens: 0,
       sessionTotalInputTokens: 0,
       sessionTotalOutputTokens: 0,
-      sessionTotalCachedTokens: 0
+      sessionTotalCachedTokens: 0,
+      contextLength: 0
     };
   }
 }

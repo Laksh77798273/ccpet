@@ -92,6 +92,28 @@ export class StatusBarFormatter {
       };
     }
     
+    // Add context metrics
+    if (state.contextLength !== undefined) {
+      sessionData['context-length'] = {
+        value: this.formatTokenCount(state.contextLength),
+        color: PET_CONFIG.COLORS.CONTEXT_LENGTH
+      };
+    }
+    
+    if (state.contextPercentage !== undefined) {
+      sessionData['context-percentage'] = {
+        value: !isNaN(state.contextPercentage) ? `${state.contextPercentage.toFixed(1)}%` : '0.0%',
+        color: PET_CONFIG.COLORS.CONTEXT_PERCENTAGE
+      };
+    }
+    
+    if (state.contextPercentageUsable !== undefined) {
+      sessionData['context-percentage-usable'] = {
+        value: !isNaN(state.contextPercentageUsable) ? `${state.contextPercentageUsable.toFixed(1)}%` : '0.0%',
+        color: PET_CONFIG.COLORS.CONTEXT_PERCENTAGE_USABLE
+      };
+    }
+    
     return sessionData;
   }
 
@@ -101,12 +123,23 @@ export class StatusBarFormatter {
     for (const item of items) {
       if (sessionData[item]) {
         const data = sessionData[item];
-        const label = item.charAt(0).toUpperCase() + item.slice(1);
+        let label: string;
+        
+        // Custom labels for context items
+        if (item === 'context-length') {
+          label = 'Ctx';
+        } else if (item === 'context-percentage') {
+          label = 'Ctx';
+        } else if (item === 'context-percentage-usable') {
+          label = 'Ctx(u)';
+        } else {
+          label = item.charAt(0).toUpperCase() + item.slice(1);
+        }
         
         if (this.testMode) {
           parts.push(`${label}: ${data.value}`);
         } else {
-          parts.push(`${data.color}${label}:${data.color} ${data.value}${PET_CONFIG.COLORS.RESET}`);
+          parts.push(`${data.color}${label}: ${data.value}${PET_CONFIG.COLORS.RESET}`);
         }
       }
     }

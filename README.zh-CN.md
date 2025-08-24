@@ -103,15 +103,18 @@ ccpet config set display.line3.enabled true            # 启用/禁用第3行
 ccpet config set display.line3.items "total"           # 第3行显示内容
 ```
 
-**可用的显示项目：** `input`, `output`, `cached`, `total`
+**可用的显示项目：** `input`, `output`, `cached`, `total`, `context-length`, `context-percentage`, `context-percentage-usable`
 
 ## 状态显示
 
-### 默认2行显示
+### 默认3行显示
 ```text
 (^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
 Input: 2847 Output: 1256 Cached: 512 Total: 4615
+Ctx: 2.4K Ctx: 12.0% Ctx(u): 88.5%
 ```
+
+**注意**: 上下文指标 (Ctx(u)) 现在默认显示为浅绿色。
 
 ### 单行显示（极简）
 配置：`ccpet config set display.maxLines 1`
@@ -119,17 +122,23 @@ Input: 2847 Output: 1256 Cached: 512 Total: 4615
 (^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
 ```
 
-### 3行自定义显示
+### 2行显示（极简）
+配置：`ccpet config set display.maxLines 2`
+```text
+(^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
+Input: 2847 Output: 1256 Cached: 512 Total: 4615
+```
+
+### 自定义3行显示
 配置：
 ```bash
-ccpet config set display.maxLines 3
 ccpet config set display.line2.items "input,output"
-ccpet config set display.line3.items "total"
+ccpet config set display.line3.items "total,context-percentage-usable"
 ```
 ```text
 (^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
 Input: 2847 Output: 1256
-Total: 4615
+Total: 4615 Ctx(u): 88.5%
 ```
 
 **显示格式：**

@@ -54,6 +54,9 @@ export class ConfigCommand {
     console.log('  colors.sessionOutput     Session output color');
     console.log('  colors.sessionCached     Session cached color');
     console.log('  colors.sessionTotal      Session total color');
+    console.log('  colors.contextLength     Context length color');
+    console.log('  colors.contextPercentage Context percentage color');
+    console.log('  colors.contextPercentageUsable Context percentage usable color');
     console.log('  pet.animationEnabled     Enable/disable animations (true/false)');
     console.log('  pet.decayRate           Energy decay rate per minute');
     console.log('  display.maxLines         Maximum lines to display (1-3)');
@@ -62,7 +65,7 @@ export class ConfigCommand {
     console.log('  display.line3.enabled    Enable/disable line 3 (true/false)');
     console.log('  display.line3.items      Items to show on line 3 (comma-separated)');
     console.log('');
-    console.log('Available display items: input, output, cached, total');
+    console.log('Available display items: input, output, cached, total, context-length, context-percentage, context-percentage-usable');
     console.log('');
     console.log('Examples:');
     console.log('  ccpet config set colors.petExpression "#FF0000:bright"');

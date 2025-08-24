@@ -16,6 +16,9 @@ function getColorConfiguration() {
       SESSION_OUTPUT: userConfig.colors.sessionOutput || '#FFFF00',
       SESSION_CACHED: userConfig.colors.sessionCached || '#F4A460',
       SESSION_TOTAL: userConfig.colors.sessionTotal || '#FFFFFF',
+      CONTEXT_LENGTH: userConfig.colors.contextLength || '#00DDFF',
+      CONTEXT_PERCENTAGE: userConfig.colors.contextPercentage || '#0099DD',
+      CONTEXT_PERCENTAGE_USABLE: userConfig.colors.contextPercentageUsable || '#90EE90',
       RESET: 'RESET' // reset color
     };
   } catch (error) {
@@ -30,6 +33,9 @@ function getColorConfiguration() {
       SESSION_OUTPUT: '#FFFF00',
       SESSION_CACHED: '#F4A460',
       SESSION_TOTAL: '#FFFFFF',
+      CONTEXT_LENGTH: '#00DDFF',
+      CONTEXT_PERCENTAGE: '#0099DD',
+      CONTEXT_PERCENTAGE_USABLE: '#90EE90',
       RESET: 'RESET'
     };
   }

@@ -34,7 +34,8 @@ describe('getTokenMetrics', () => {
       totalTokens: 0,
       sessionTotalInputTokens: 0,
       sessionTotalOutputTokens: 0,
-      sessionTotalCachedTokens: 0
+      sessionTotalCachedTokens: 0,
+      contextLength: 0
     });
     expect(fs.existsSync).toHaveBeenCalledWith(mockTranscriptPath);
   });
@@ -69,7 +70,8 @@ describe('getTokenMetrics', () => {
       totalTokens: 425,  // 300 + 125
       sessionTotalInputTokens: 300,
       sessionTotalOutputTokens: 125,
-      sessionTotalCachedTokens: 0
+      sessionTotalCachedTokens: 0,
+      contextLength: 200 // input_tokens from most recent message (uuid2)
     });
   });
 
@@ -103,7 +105,8 @@ describe('getTokenMetrics', () => {
       totalTokens: 425,
       sessionTotalInputTokens: 300,
       sessionTotalOutputTokens: 125,
-      sessionTotalCachedTokens: 0
+      sessionTotalCachedTokens: 0,
+      contextLength: 200 // input_tokens from most recent valid message
     });
   });
 
@@ -136,7 +139,8 @@ describe('getTokenMetrics', () => {
       totalTokens: 75,
       sessionTotalInputTokens: 50,
       sessionTotalOutputTokens: 25,
-      sessionTotalCachedTokens: 0
+      sessionTotalCachedTokens: 0,
+      contextLength: 50 // input_tokens from uuid2
     });
   });
 
@@ -169,7 +173,8 @@ describe('getTokenMetrics', () => {
       totalTokens: 175,
       sessionTotalInputTokens: 100,
       sessionTotalOutputTokens: 75,
-      sessionTotalCachedTokens: 0
+      sessionTotalCachedTokens: 0,
+      contextLength: 0 // Last message (uuid3) has null input_tokens
     });
   });
 
@@ -188,7 +193,8 @@ describe('getTokenMetrics', () => {
       totalTokens: 0,
       sessionTotalInputTokens: 0,
       sessionTotalOutputTokens: 0,
-      sessionTotalCachedTokens: 0
+      sessionTotalCachedTokens: 0,
+      contextLength: 0
     });
   });
 
@@ -217,7 +223,8 @@ describe('getTokenMetrics', () => {
       totalTokens: 0,
       sessionTotalInputTokens: 0,
       sessionTotalOutputTokens: 0,
-      sessionTotalCachedTokens: 0
+      sessionTotalCachedTokens: 0,
+      contextLength: 0
     });
   });
 
@@ -249,7 +256,8 @@ describe('getTokenMetrics', () => {
       totalTokens: 480, // 300 + 125 + 55
       sessionTotalInputTokens: 300,
       sessionTotalOutputTokens: 125,
-      sessionTotalCachedTokens: 55
+      sessionTotalCachedTokens: 55,
+      contextLength: 230 // 200 input + 30 cache_read from uuid2
     });
   });
 });

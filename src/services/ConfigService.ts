@@ -13,6 +13,9 @@ export interface UserConfig {
     sessionOutput?: string;
     sessionCached?: string;
     sessionTotal?: string;
+    contextLength?: string;
+    contextPercentage?: string;
+    contextPercentageUsable?: string;
   };
   pet: {
     animationEnabled?: boolean;
@@ -41,21 +44,24 @@ const DEFAULT_CONFIG: UserConfig = {
     sessionInput: '#00FF00',
     sessionOutput: '#FFFF00',
     sessionCached: '#F4A460',
-    sessionTotal: '#FFFFFF'
+    sessionTotal: '#FFFFFF',
+    contextLength: '#00DDFF',
+    contextPercentage: '#0099DD',
+    contextPercentageUsable: '#90EE90'
   },
   pet: {
     animationEnabled: true,
     decayRate: 0.0231
   },
   display: {
-    maxLines: 2,
+    maxLines: 3,
     line2: {
       enabled: true,
       items: ['input', 'output', 'cached', 'total']
     },
     line3: {
-      enabled: false,
-      items: []
+      enabled: true,
+      items: ['context-length', 'context-percentage', 'context-percentage-usable']
     }
   }
 };
