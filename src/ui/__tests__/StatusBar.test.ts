@@ -65,7 +65,7 @@ describe('StatusBarFormatter Component', () => {
 
       const result = formatter.formatPetDisplay(testState);
 
-      expect(result).toBe('(^_^) ●●●●●●●●○○ 75.00 (1.0K) 💖1.0K In: 2.5K Out: 1.5K Cached: 500 Total: 4.5K');
+      expect(result).toBe('(^_^) ●●●●●●●●○○ 75.00 (1.0K) 💖1.0K\nInput: 2.5K Output: 1.5K Cached: 500 Total: 4.5K');
     });
 
     it('should not include session token info when not available', () => {

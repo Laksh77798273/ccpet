@@ -18,6 +18,17 @@ export interface UserConfig {
     animationEnabled?: boolean;
     decayRate?: number;
   };
+  display: {
+    maxLines?: number; // 1-3, default 2
+    line2?: {
+      enabled?: boolean;
+      items?: string[]; // e.g., ['input', 'output', 'cached', 'total']
+    };
+    line3?: {
+      enabled?: boolean;
+      items?: string[]; // e.g., ['total'] or custom items
+    };
+  };
 }
 
 const DEFAULT_CONFIG: UserConfig = {
@@ -35,6 +46,17 @@ const DEFAULT_CONFIG: UserConfig = {
   pet: {
     animationEnabled: true,
     decayRate: 0.0231
+  },
+  display: {
+    maxLines: 2,
+    line2: {
+      enabled: true,
+      items: ['input', 'output', 'cached', 'total']
+    },
+    line3: {
+      enabled: false,
+      items: []
+    }
   }
 };
 
@@ -92,6 +114,18 @@ export class ConfigService {
       pet: {
         ...DEFAULT_CONFIG.pet,
         ...userConfig.pet
+      },
+      display: {
+        ...DEFAULT_CONFIG.display,
+        ...userConfig.display,
+        line2: {
+          ...DEFAULT_CONFIG.display.line2,
+          ...userConfig.display?.line2
+        },
+        line3: {
+          ...DEFAULT_CONFIG.display.line3,
+          ...userConfig.display?.line3
+        }
       }
     };
   }
@@ -115,6 +149,24 @@ export class ConfigService {
   setPetConfig(key: keyof UserConfig['pet'], value: boolean | number): void {
     const config = this.loadConfig();
     (config.pet as any)[key] = value;
+    this.saveConfig(config);
+  }
+
+  setDisplayConfig(key: string, value: any): void {
+    const config = this.loadConfig();
+    
+    if (key === 'maxLines') {
+      config.display.maxLines = Math.min(3, Math.max(1, Number(value)));
+    } else if (key === 'line2.enabled') {
+      config.display.line2!.enabled = Boolean(value);
+    } else if (key === 'line2.items') {
+      config.display.line2!.items = Array.isArray(value) ? value : value.split(',').map((s: string) => s.trim());
+    } else if (key === 'line3.enabled') {
+      config.display.line3!.enabled = Boolean(value);
+    } else if (key === 'line3.items') {
+      config.display.line3!.items = Array.isArray(value) ? value : value.split(',').map((s: string) => s.trim());
+    }
+    
     this.saveConfig(config);
   }
 

@@ -304,3 +304,4 @@ export function deactivate() {
 // The automatic execution has been removed to prevent duplicate calls
 
 export { ClaudeCodeStatusLine };
+export { StatusBarFormatter } from './ui/StatusBar';

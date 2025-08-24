@@ -94,25 +94,48 @@ ccpet config set colors.lifetimeTokens "#FF00FF"
 # 宠物行为
 ccpet config set pet.animationEnabled true
 ccpet config set pet.decayRate 0.0231
+
+# 多行显示（新功能！）
+ccpet config set display.maxLines 3                    # 显示最多3行 (1-3)
+ccpet config set display.line2.enabled true            # 启用/禁用第2行
+ccpet config set display.line2.items "input,output"    # 第2行显示内容
+ccpet config set display.line3.enabled true            # 启用/禁用第3行
+ccpet config set display.line3.items "total"           # 第3行显示内容
 ```
+
+**可用的显示项目：** `input`, `output`, `cached`, `total`
 
 ## 状态显示
 
-### 正常运行
+### 默认2行显示
 ```text
 (^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
-In: 2847 Out: 1256 Cached: 512 Total: 4615
+Input: 2847 Output: 1256 Cached: 512 Total: 4615
 ```
 
-### 低能量
+### 单行显示（极简）
+配置：`ccpet config set display.maxLines 1`
 ```text
-(u_u) ●●○○○○○○○○ 15.32 (890.1K) 💖12.3M
-In: 5234 Out: 3421 Cached: 1024 Total: 9679
+(^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
 ```
 
-**状态格式：**
-- **第 1 行**: `[表情] [能量条] [能量值] ([累计 token]) 💖[终身 token]`
-- **第 2 行**: `In: [输入] Out: [输出] Cached: [缓存] Total: [会话总计]`
+### 3行自定义显示
+配置：
+```bash
+ccpet config set display.maxLines 3
+ccpet config set display.line2.items "input,output"
+ccpet config set display.line3.items "total"
+```
+```text
+(^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
+Input: 2847 Output: 1256
+Total: 4615
+```
+
+**显示格式：**
+- **第1行**（固定）: `[表情] [能量条] [能量值] ([累计 token]) 💖[终身 token]`
+- **第2行**（可配置）: 你选择的自定义项目
+- **第3行**（可配置）: 你选择的自定义项目
 
 ## 宠物照顾指南
 

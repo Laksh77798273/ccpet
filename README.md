@@ -94,25 +94,48 @@ ccpet config set colors.lifetimeTokens "#FF00FF"
 # Pet behavior
 ccpet config set pet.animationEnabled true
 ccpet config set pet.decayRate 0.0231
+
+# Multi-line display (NEW!)
+ccpet config set display.maxLines 3                    # Show up to 3 lines (1-3)
+ccpet config set display.line2.enabled true            # Enable/disable line 2
+ccpet config set display.line2.items "input,output"    # What to show on line 2
+ccpet config set display.line3.enabled true            # Enable/disable line 3
+ccpet config set display.line3.items "total"           # What to show on line 3
 ```
+
+**Available Display Items:** `input`, `output`, `cached`, `total`
 
 ## Status Display
 
-### Normal Operation
+### Default 2-Line Display
 ```text
 (^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
-In: 2847 Out: 1256 Cached: 512 Total: 4615
+Input: 2847 Output: 1256 Cached: 512 Total: 4615
 ```
 
-### Low Energy
+### Single Line (Minimal)
+Configure with: `ccpet config set display.maxLines 1`
 ```text
-(u_u) ●●○○○○○○○○ 15.32 (890.1K) 💖12.3M
-In: 5234 Out: 3421 Cached: 1024 Total: 9679
+(^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
 ```
 
-**Status Format:**
-- **Line 1**: `[expression] [energy_bar] [energy_value] ([accumulated_tokens]) 💖[lifetime_tokens]`
-- **Line 2**: `In: [input] Out: [output] Cached: [cached] Total: [session_total]`
+### 3-Line Custom Display
+Configure with:
+```bash
+ccpet config set display.maxLines 3
+ccpet config set display.line2.items "input,output"
+ccpet config set display.line3.items "total"
+```
+```text
+(^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
+Input: 2847 Output: 1256
+Total: 4615
+```
+
+**Display Format:**
+- **Line 1** (Fixed): `[expression] [energy_bar] [energy_value] ([accumulated_tokens]) 💖[lifetime_tokens]`
+- **Line 2** (Configurable): Custom items you choose
+- **Line 3** (Configurable): Custom items you choose
 
 ## Pet Care Guide
 

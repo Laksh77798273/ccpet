@@ -56,7 +56,8 @@ describe('ConfigService Edge Cases', () => {
       // Should return default config
       expect(config).toEqual({
         colors: expect.any(Object),
-        pet: expect.any(Object)
+        pet: expect.any(Object),
+        display: expect.any(Object)
       });
     });
 
@@ -76,7 +77,8 @@ describe('ConfigService Edge Cases', () => {
       // Should return default config
       expect(config).toEqual({
         colors: expect.any(Object),
-        pet: expect.any(Object)
+        pet: expect.any(Object),
+        display: expect.any(Object)
       });
     });
 
@@ -88,7 +90,8 @@ describe('ConfigService Edge Cases', () => {
       expect(mockFs.writeFileSync).toHaveBeenCalled();
       expect(config).toEqual({
         colors: expect.any(Object),
-        pet: expect.any(Object)
+        pet: expect.any(Object),
+        display: expect.any(Object)
       });
     });
   });
