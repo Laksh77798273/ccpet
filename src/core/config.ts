@@ -78,6 +78,25 @@ function getColorConfiguration() {
   }
 }
 
+// 宠物名称列表
+export const PET_NAMES: readonly string[] = [
+  'Fluffy', 'Whiskers', 'Shadow', 'Luna', 'Max',
+  'Bella', 'Charlie', 'Lucy', 'Cooper', 'Ruby',
+  'Milo', 'Lily', 'Buddy', 'Chloe', 'Rocky',
+  '小白', '毛毛', '球球', '豆豆', '花花',
+  '咪咪', '旺财', '小黑', '雪儿', '糖糖'
+] as const;
+
+// 生成随机宠物名称的实用函数
+export function generateRandomPetName(): string {
+  if (PET_NAMES.length === 0) {
+    return 'Pet'; // 降级策略：如果名称列表为空，返回默认名称
+  }
+  
+  const randomIndex = Math.floor(Math.random() * PET_NAMES.length);
+  return PET_NAMES[randomIndex];
+}
+
 // 动物类型配置
 export const ANIMAL_CONFIGS: Record<AnimalType, IAnimalConfig> = {
   [AnimalType.CAT]: { id: AnimalType.CAT, name: '猫', emoji: '🐱' },

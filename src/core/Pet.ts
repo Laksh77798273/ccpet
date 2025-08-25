@@ -1,4 +1,4 @@
-import { PET_CONFIG, AnimalType, ANIMAL_CONFIGS } from './config';
+import { PET_CONFIG, AnimalType, ANIMAL_CONFIGS, generateRandomPetName } from './config';
 
 export interface IPetState {
   energy: number;
@@ -17,6 +17,7 @@ export interface IPetState {
   contextPercentage?: number; // 上下文使用百分比（基于200k限制）
   contextPercentageUsable?: number; // 可用上下文使用百分比（基于160k限制）
   sessionTotalCostUsd?: number; // 当前会话总费用（美元）
+  petName: string; // 宠物名称
 }
 
 interface IPetDependencies {
@@ -31,7 +32,11 @@ export class Pet {
   private observers: PetObserver[] = [];
 
   constructor(initialState: IPetState, dependencies: IPetDependencies) {
-    this.state = { ...initialState };
+    // Initialize state with backward compatibility for missing petName
+    this.state = {
+      ...initialState,
+      petName: initialState.petName || generateRandomPetName()
+    };
     this.deps = dependencies;
     this._updateExpression(); // Ensure expression matches energy level
   }
@@ -200,7 +205,8 @@ export class Pet {
         lastDecayTime: now,
         sessionTotalInputTokens: 0,
         sessionTotalOutputTokens: 0,
-        sessionTotalCachedTokens: 0
+        sessionTotalCachedTokens: 0,
+        petName: generateRandomPetName() // 为新宠物分配随机名称
       };
       console.log(`Pet reborn as ${newAnimalType} type`); // 调试日志
       this._updateExpression();

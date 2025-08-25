@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PetStorage } from '../PetStorage';
 import { IPetState } from '../../core/Pet';
-import { AnimalType } from '../../core/config';
+import { AnimalType, PET_NAMES } from '../../core/config';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -25,6 +25,7 @@ describe('PetStorage Service', () => {
     totalTokensConsumed: 5,
     accumulatedTokens: 0,
     totalLifetimeTokens: 5,
+    petName: 'TestPet',
     ...overrides
   });
 
@@ -168,7 +169,8 @@ describe('PetStorage Service', () => {
         ...mockState,
         totalLifetimeTokens: 5,
         animalType: AnimalType.CAT, // Should add default animal type
-        birthTime: expect.any(Date) // Should add birthTime for backward compatibility
+        birthTime: expect.any(Date), // Should add birthTime for backward compatibility
+        petName: expect.any(String) // Should add petName for backward compatibility
       }));
     });
 
@@ -193,7 +195,8 @@ describe('PetStorage Service', () => {
         ...mockStateWithoutAnimalType,
         lastFeedTime: new Date('2025-08-21T12:00:00.000Z'),
         animalType: AnimalType.CAT, // Should add default animal type
-        birthTime: expect.any(Date) // Should add birthTime for backward compatibility
+        birthTime: expect.any(Date), // Should add birthTime for backward compatibility
+        petName: expect.any(String) // Should add petName for backward compatibility
       }));
     });
 
@@ -215,11 +218,12 @@ describe('PetStorage Service', () => {
       const storage = new PetStorage();
       const result = storage.loadState();
       
-      expect(result).toEqual({
+      expect(result).toEqual(expect.objectContaining({
         ...mockStateWithoutBirthTime,
         lastFeedTime: new Date('2025-08-21T12:00:00.000Z'),
-        birthTime: new Date('2025-08-21T12:00:00.000Z') // Should use lastFeedTime as fallback
-      });
+        birthTime: new Date('2025-08-21T12:00:00.000Z'), // Should use lastFeedTime as fallback
+        petName: expect.any(String) // Should add petName for backward compatibility
+      }));
     });
 
     it('should validate and fix invalid animal types', () => {
@@ -244,7 +248,8 @@ describe('PetStorage Service', () => {
         ...mockStateWithInvalidAnimalType,
         lastFeedTime: new Date('2025-08-21T12:00:00.000Z'),
         animalType: AnimalType.CAT, // Should fix invalid animal type to default
-        birthTime: expect.any(Date) // Should add birthTime for backward compatibility
+        birthTime: expect.any(Date), // Should add birthTime for backward compatibility
+        petName: expect.any(String) // Should add petName for backward compatibility
       }));
     });
 
@@ -274,6 +279,96 @@ describe('PetStorage Service', () => {
         const result = storage.loadState();
         
         expect(result?.animalType).toBe(type);
+      });
+    });
+
+    describe('petName backward compatibility', () => {
+      it('should add random petName for state without petName', () => {
+        const mockStateWithoutPetName = {
+          energy: 75,
+          expression: '(^_^)',
+          animalType: AnimalType.CAT,
+          birthTime: '2025-08-20T10:00:00.000Z',
+          lastFeedTime: '2025-08-21T12:00:00.000Z',
+          totalTokensConsumed: 5,
+          accumulatedTokens: 0,
+          totalLifetimeTokens: 5
+        };
+        const mockJson = JSON.stringify(mockStateWithoutPetName);
+        
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockReturnValue(mockJson);
+        
+        const storage = new PetStorage();
+        const result = storage.loadState();
+        
+        expect(result).toEqual(expect.objectContaining({
+          ...mockStateWithoutPetName,
+          birthTime: new Date('2025-08-20T10:00:00.000Z'),
+          lastFeedTime: new Date('2025-08-21T12:00:00.000Z'),
+          petName: expect.any(String)
+        }));
+        expect(PET_NAMES).toContain(result?.petName);
+      });
+
+      it('should preserve existing petName when present', () => {
+        const mockStateWithPetName = createMockPetState({ petName: 'ExistingPetName' });
+        const mockJson = JSON.stringify(mockStateWithPetName);
+        
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockReturnValue(mockJson);
+        
+        const storage = new PetStorage();
+        const result = storage.loadState();
+        
+        expect(result?.petName).toBe('ExistingPetName');
+      });
+
+      it('should handle empty petName by generating new one', () => {
+        const mockStateWithEmptyName = createMockPetState({ petName: '' });
+        const mockJson = JSON.stringify(mockStateWithEmptyName);
+        
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockReturnValue(mockJson);
+        
+        const storage = new PetStorage();
+        const result = storage.loadState();
+        
+        // Empty string should be replaced with random name
+        expect(result?.petName).not.toBe('');
+        expect(result?.petName?.length).toBeGreaterThan(0);
+      });
+
+      it('should generate names from PET_NAMES array', () => {
+        const mockStateWithoutPetName = {
+          energy: 75,
+          expression: '(^_^)',
+          animalType: AnimalType.CAT,
+          birthTime: '2025-08-20T10:00:00.000Z',
+          lastFeedTime: '2025-08-21T12:00:00.000Z',
+          totalTokensConsumed: 5,
+          accumulatedTokens: 0,
+          totalLifetimeTokens: 5
+        };
+        const mockJson = JSON.stringify(mockStateWithoutPetName);
+        
+        vi.mocked(fs.existsSync).mockReturnValue(true);
+        vi.mocked(fs.readFileSync).mockReturnValue(mockJson);
+        
+        // Test multiple loads to verify names come from the array
+        const results = new Set<string>();
+        for (let i = 0; i < 10; i++) {
+          const storage = new PetStorage();
+          const result = storage.loadState();
+          if (result?.petName) {
+            results.add(result.petName);
+          }
+        }
+        
+        // All generated names should be from PET_NAMES
+        for (const name of results) {
+          expect(PET_NAMES).toContain(name);
+        }
       });
     });
   });
@@ -315,6 +410,18 @@ describe('PetStorage Service', () => {
         expectedJson,
         'utf8'
       );
+    });
+
+    it('should save petName field correctly', () => {
+      const mockState = createMockPetState({ petName: 'SavedPetName' });
+      const storage = new PetStorage();
+      
+      storage.saveState(mockState);
+      
+      const savedJson = vi.mocked(fs.writeFileSync).mock.calls[0][1] as string;
+      const parsedState = JSON.parse(savedJson);
+      
+      expect(parsedState.petName).toBe('SavedPetName');
     });
   });
 

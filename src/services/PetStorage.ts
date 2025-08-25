@@ -1,5 +1,5 @@
 import { IPetState } from '../core/Pet';
-import { AnimalType, PET_CONFIG } from '../core/config';
+import { AnimalType, PET_CONFIG, generateRandomPetName } from '../core/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -65,6 +65,13 @@ export class PetStorage {
         // This provides a reasonable estimate of when the pet was "born"
         parsed.birthTime = parsed.lastFeedTime || new Date();
         console.log(`Adding birthTime for existing pet: ${parsed.birthTime.toISOString()}`);
+      }
+      
+      // Handle backward compatibility - add petName if missing or empty
+      if (parsed.petName === undefined || parsed.petName === '') {
+        // Generate a random name for existing pets without names or with empty names
+        parsed.petName = generateRandomPetName();
+        console.log(`Adding petName for existing pet: ${parsed.petName}`);
       }
       
       return parsed as IPetState;

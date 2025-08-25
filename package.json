@@ -13,7 +13,8 @@
   "scripts": {
     "build": "node esbuild.config.js",
     "watch": "node esbuild.config.js --watch",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:unit": "vitest run src/core src/ui src/services",
     "test:coverage": "vitest run --coverage",
     "prepublishOnly": "npm run build && tsc --noEmit && npm test",

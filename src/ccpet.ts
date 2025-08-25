@@ -3,7 +3,7 @@ import { StatusBarFormatter } from './ui/StatusBar';
 import { PetStorage } from './services/PetStorage';
 import { ConfigService } from './services/ConfigService';
 import { getTokenMetrics } from './utils/jsonl';
-import { PET_CONFIG } from './core/config';
+import { PET_CONFIG, generateRandomPetName } from './core/config';
 
 // Simple animation counter for cycling expressions
 class AnimationCounter {
@@ -96,7 +96,8 @@ class ClaudeCodeStatusLine {
       lastFeedTime: now,
       totalTokensConsumed: 0,
       accumulatedTokens: 0,
-      totalLifetimeTokens: 0
+      totalLifetimeTokens: 0,
+      petName: generateRandomPetName() // 为新宠物分配随机名称
     };
 
 
