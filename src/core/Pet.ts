@@ -75,7 +75,6 @@ export class Pet {
         totalTokensConsumed: this.state.totalTokensConsumed + tokens,
         totalLifetimeTokens: this.state.totalLifetimeTokens + tokens
       };
-      
       // 如果有完整的能量点要增加
       if (energyToAdd > 0) {
         this.addEnergy(energyToAdd);
@@ -268,6 +267,26 @@ export class Pet {
       return `${animalEmoji}${baseExpression}`;
     } else {
       return baseExpression;
+    }
+  }
+
+  public updateSessionMetrics(sessionMetrics: {
+    sessionTotalInputTokens?: number;
+    sessionTotalOutputTokens?: number;
+    sessionTotalCachedTokens?: number;
+    contextLength?: number;
+    contextPercentage?: number;
+    contextPercentageUsable?: number;
+    sessionTotalCostUsd?: number;
+  }): void {
+    try {
+      this.state = {
+        ...this.state,
+        ...sessionMetrics
+      };
+      // No need to notify observers as this is session-level data
+    } catch (error) {
+      console.error('Pet updateSessionMetrics failed:', error);
     }
   }
 

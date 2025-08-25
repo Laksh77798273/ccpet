@@ -149,6 +149,7 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
     // Load session tracker to find last processed position
     const tracker = loadSessionTracker(sessionId);
     let startProcessing = tracker ? false : true; // If no tracker, process from beginning
+    
 
     // Process messages incrementally
     for (const message of messages) {
@@ -171,9 +172,8 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
       if (tracker && !startProcessing) {
         if (message.uuid === tracker.lastProcessedUuid) {
           startProcessing = true;
-          continue; // Skip the already processed message
         }
-        continue;
+        continue; // Skip messages until we find the last processed one
       }
 
       // Process this message for incremental tokens

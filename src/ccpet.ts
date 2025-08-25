@@ -125,20 +125,25 @@ class ClaudeCodeStatusLine {
         this.pet.feed(tokenMetrics.totalTokens);
       }
       
-      // Get current state and update with session token info
-      const state = this.pet.getState();
-      state.sessionTotalInputTokens = tokenMetrics.sessionTotalInputTokens;
-      state.sessionTotalOutputTokens = tokenMetrics.sessionTotalOutputTokens;
-      state.sessionTotalCachedTokens = tokenMetrics.sessionTotalCachedTokens;
-      state.sessionTotalCostUsd = claudeCodeInput.cost.total_cost_usd;
+      // Update session metrics using proper method
+      const sessionMetrics: any = {
+        sessionTotalInputTokens: tokenMetrics.sessionTotalInputTokens,
+        sessionTotalOutputTokens: tokenMetrics.sessionTotalOutputTokens,
+        sessionTotalCachedTokens: tokenMetrics.sessionTotalCachedTokens,
+        sessionTotalCostUsd: claudeCodeInput.cost.total_cost_usd,
+        contextLength: tokenMetrics.contextLength
+      };
       
-      // Calculate context metrics based on ccstatusline algorithms
-      state.contextLength = tokenMetrics.contextLength;
       // Only calculate percentages if contextLength is defined
       if (tokenMetrics.contextLength !== undefined) {
-        state.contextPercentage = Math.min(100, (tokenMetrics.contextLength / 200000) * 100);
-        state.contextPercentageUsable = Math.min(100, (tokenMetrics.contextLength / 160000) * 100);
+        sessionMetrics.contextPercentage = Math.min(100, (tokenMetrics.contextLength / 200000) * 100);
+        sessionMetrics.contextPercentageUsable = Math.min(100, (tokenMetrics.contextLength / 160000) * 100);
       }
+      
+      this.pet.updateSessionMetrics(sessionMetrics);
+      
+      // Get updated state for display
+      const state = this.pet.getState();
       
       // 启用动画并获取当前帧索引
       const animationEnabled = this.animationCounter.shouldEnableAnimation();
@@ -262,7 +267,36 @@ export async function main(): Promise<void> {
     // console.log('Input data:', inputData);
     
     if (!inputData) {
-      // No input provided - show basic status
+      // No input provided - check if CCPET_TRANSCRIPT_PATH is set for testing
+      const transcriptPath = process.env.CCPET_TRANSCRIPT_PATH;
+      if (transcriptPath) {
+        // Create a minimal ClaudeCodeStatusInput for testing
+        const claudeCodeInput: ClaudeCodeStatusInput = {
+          hook_event_name: 'test',
+          session_id: 'test',
+          transcript_path: transcriptPath,
+          cwd: process.cwd(),
+          model: { id: 'test', display_name: 'test' },
+          workspace: { current_dir: process.cwd(), project_dir: process.cwd() },
+          version: '1.0.0',
+          output_style: { name: 'default' },
+          cost: {
+            total_cost_usd: 0,
+            total_duration_ms: 0,
+            total_api_duration_ms: 0,
+            total_lines_added: 0,
+            total_lines_removed: 0
+          }
+        };
+        
+        const statusLine = new ClaudeCodeStatusLine();
+        const display = await statusLine.processTokensAndGetStatusDisplay(claudeCodeInput);
+        statusLine.saveState();
+        process.stdout.write(display);
+        return;
+      }
+      
+      // No input provided and no transcript path - show basic status
       const statusLine = new ClaudeCodeStatusLine();
       const display = statusLine.getStatusDisplay();
       statusLine.saveState();

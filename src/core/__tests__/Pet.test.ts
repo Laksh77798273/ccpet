@@ -1370,4 +1370,91 @@ describe('Pet Core Logic', () => {
       });
     });
   });
+
+  describe('Session Metrics Updates', () => {
+    describe('updateSessionMetrics', () => {
+      it('should update session metrics correctly', () => {
+        const initialState = createInitialState();
+        const pet = new Pet(initialState, mockDependencies);
+        
+        const sessionMetrics = {
+          sessionTotalInputTokens: 1000,
+          sessionTotalOutputTokens: 2000,
+          sessionTotalCachedTokens: 500,
+          contextLength: 150000,
+          contextPercentage: 75.0,
+          contextPercentageUsable: 93.75,
+          sessionTotalCostUsd: 0.05
+        };
+        
+        pet.updateSessionMetrics(sessionMetrics);
+        const state = pet.getState();
+        
+        expect(state.sessionTotalInputTokens).toBe(1000);
+        expect(state.sessionTotalOutputTokens).toBe(2000);
+        expect(state.sessionTotalCachedTokens).toBe(500);
+        expect(state.contextLength).toBe(150000);
+        expect(state.contextPercentage).toBe(75.0);
+        expect(state.contextPercentageUsable).toBe(93.75);
+        expect(state.sessionTotalCostUsd).toBe(0.05);
+      });
+
+      it('should update partial session metrics', () => {
+        const initialState = createInitialState();
+        const pet = new Pet(initialState, mockDependencies);
+        
+        pet.updateSessionMetrics({
+          sessionTotalInputTokens: 500,
+          contextLength: 80000
+        });
+        
+        const state = pet.getState();
+        
+        expect(state.sessionTotalInputTokens).toBe(500);
+        expect(state.contextLength).toBe(80000);
+        // Other fields should remain unchanged
+        expect(state.energy).toBe(50); // original energy
+      });
+
+      it('should preserve core pet state during session metrics updates', () => {
+        const initialState = createInitialState();
+        const pet = new Pet(initialState, mockDependencies);
+        
+        // Modify core state first
+        pet.feed(1000000); // 1M tokens = 1 energy
+        const originalState = pet.getState();
+        
+        // Update session metrics
+        pet.updateSessionMetrics({
+          sessionTotalInputTokens: 2000,
+          sessionTotalOutputTokens: 3000
+        });
+        
+        const newState = pet.getState();
+        
+        // Session metrics should be updated
+        expect(newState.sessionTotalInputTokens).toBe(2000);
+        expect(newState.sessionTotalOutputTokens).toBe(3000);
+        
+        // Core state should be preserved
+        expect(newState.energy).toBe(originalState.energy);
+        expect(newState.totalTokensConsumed).toBe(originalState.totalTokensConsumed);
+        expect(newState.totalLifetimeTokens).toBe(originalState.totalLifetimeTokens);
+        expect(newState.petName).toBe(originalState.petName);
+      });
+
+      it('should handle errors gracefully', () => {
+        const initialState = createInitialState();
+        const pet = new Pet(initialState, mockDependencies);
+        
+        // This shouldn't throw
+        expect(() => {
+          pet.updateSessionMetrics({
+            sessionTotalInputTokens: 1000,
+            contextLength: 50000
+          });
+        }).not.toThrow();
+      });
+    });
+  });
 });
