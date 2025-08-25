@@ -119,6 +119,7 @@ describe('StatusBarFormatter Component', () => {
       configService.getConfig = vi.fn().mockReturnValue({
         display: {
           maxLines: 3,
+          line1: { enabled: true, items: ['expression', 'energy-bar', 'energy-value', 'accumulated-tokens', 'lifetime-tokens'] },
           line2: { enabled: true, items: ['input', 'output', 'cached', 'total'] },
           line3: { enabled: true, items: ['context-length', 'context-percentage', 'context-percentage-usable'] }
         }
@@ -140,6 +141,122 @@ describe('StatusBarFormatter Component', () => {
       const result = formatter.formatPetDisplay(testState);
 
       expect(result).toBe('(^_^) ●●●●●●●●○○ 75.00 (1.0K) 💖1.0K\nInput: 2.5K Output: 1.5K Cached: 500 Total: 4.5K\nCtx: 0 Ctx: 0.0% Ctx(u): 0.0%');
+    });
+
+    it('should format line1 with custom configuration', () => {
+      const formatter = new StatusBarFormatter(true);
+      const configService = (formatter as any).configService;
+      configService.getConfig = vi.fn().mockReturnValue({
+        display: {
+          maxLines: 1,
+          line1: { enabled: true, items: ['expression', 'energy-value'] }
+        }
+      });
+
+      const testState = createMockPetState({
+        expression: '(^_^)',
+        energy: 75,
+        accumulatedTokens: 1000,
+        totalLifetimeTokens: 1000
+      });
+
+      const result = formatter.formatPetDisplay(testState);
+
+      expect(result).toBe('(^_^) 75.00');
+    });
+
+    it('should fallback to default line1 format when no valid items configured', () => {
+      const formatter = new StatusBarFormatter(true);
+      const configService = (formatter as any).configService;
+      configService.getConfig = vi.fn().mockReturnValue({
+        display: {
+          maxLines: 1,
+          line1: { enabled: true, items: ['invalid-item'] }
+        }
+      });
+
+      const testState = createMockPetState({
+        expression: '(^_^)',
+        energy: 75,
+        accumulatedTokens: 1000,
+        totalLifetimeTokens: 1000
+      });
+
+      const result = formatter.formatPetDisplay(testState);
+
+      // Should fallback to the old format
+      expect(result).toBe('(^_^) ●●●●●●●●○○ 75.00 (1.0K) 💖1.0K');
+    });
+
+    it('should support pet-name placeholder in line1', () => {
+      const formatter = new StatusBarFormatter(true);
+      const configService = (formatter as any).configService;
+      configService.getConfig = vi.fn().mockReturnValue({
+        display: {
+          maxLines: 1,
+          line1: { enabled: true, items: ['pet-name', 'expression'] }
+        }
+      });
+
+      const testState = createMockPetState({
+        expression: '(^_^)',
+        energy: 75,
+        accumulatedTokens: 1000,
+        totalLifetimeTokens: 1000
+      });
+
+      const result = formatter.formatPetDisplay(testState);
+
+      expect(result).toBe('Pet (^_^)');
+    });
+
+    it('should maintain backward compatibility when line1 is not configured', () => {
+      const formatter = new StatusBarFormatter(true);
+      const configService = (formatter as any).configService;
+      configService.getConfig = vi.fn().mockReturnValue({
+        display: {
+          maxLines: 1
+          // No line1 configuration - should fall back to old behavior
+        }
+      });
+
+      const testState = createMockPetState({
+        expression: '(^_^)',
+        energy: 75,
+        accumulatedTokens: 1000,
+        totalLifetimeTokens: 1000
+      });
+
+      const result = formatter.formatPetDisplay(testState);
+
+      // Should use the old formatPetLine method
+      expect(result).toBe('(^_^) ●●●●●●●●○○ 75.00 (1.0K) 💖1.0K');
+    });
+
+    it('should handle line1 disabled', () => {
+      const formatter = new StatusBarFormatter(true);
+      const configService = (formatter as any).configService;
+      configService.getConfig = vi.fn().mockReturnValue({
+        display: {
+          maxLines: 2,
+          line1: { enabled: false, items: ['expression', 'energy-bar'] },
+          line2: { enabled: true, items: ['input', 'output'] }
+        }
+      });
+
+      const testState = createMockPetState({
+        expression: '(^_^)',
+        energy: 75,
+        accumulatedTokens: 1000,
+        totalLifetimeTokens: 1000,
+        sessionTotalInputTokens: 2500,
+        sessionTotalOutputTokens: 1500
+      });
+
+      const result = formatter.formatPetDisplay(testState);
+
+      // Should only show line2, no line1
+      expect(result).toBe('Input: 2.5K Output: 1.5K');
     });
   });
 

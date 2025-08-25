@@ -134,8 +134,76 @@ describe('ConfigService Display Configuration', () => {
 
     expect(config.display).toEqual({
       maxLines: 3,
+      line1: { enabled: true, items: ['expression', 'energy-bar', 'energy-value', 'accumulated-tokens', 'lifetime-tokens'] },
       line2: { enabled: true, items: ['input', 'output', 'cached', 'total'] },
       line3: { enabled: true, items: ['context-length', 'context-percentage', 'context-percentage-usable', 'cost'] }
     });
+  });
+
+  // Line1 configuration tests
+  it('should set line1.enabled', () => {
+    configService.setDisplayConfig('line1.enabled', 'false');
+    
+    expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+      mockConfigFile,
+      expect.stringContaining('"enabled": false'),
+      'utf8'
+    );
+  });
+
+  it('should set line1.items from comma-separated string with validation', () => {
+    configService.setDisplayConfig('line1.items', 'expression,energy-bar,invalid-item');
+    
+    const writeCall = mockFs.writeFileSync.mock.calls[0];
+    const configJson = JSON.parse(writeCall[1] as string);
+    
+    // Should only include valid items
+    expect(configJson.display.line1.items).toEqual(['expression', 'energy-bar']);
+  });
+
+  it('should set line1.items from array with validation', () => {
+    configService.setDisplayConfig('line1.items', ['energy-value', 'accumulated-tokens', 'invalid-item']);
+    
+    const writeCall = mockFs.writeFileSync.mock.calls[0];
+    const configJson = JSON.parse(writeCall[1] as string);
+    
+    expect(configJson.display.line1.items).toEqual(['energy-value', 'accumulated-tokens']);
+  });
+
+  it('should fallback to default when all line1.items are invalid', () => {
+    configService.setDisplayConfig('line1.items', ['invalid1', 'invalid2']);
+    
+    const writeCall = mockFs.writeFileSync.mock.calls[0];
+    const configJson = JSON.parse(writeCall[1] as string);
+    
+    expect(configJson.display.line1.items).toEqual(['expression', 'energy-bar', 'energy-value', 'accumulated-tokens', 'lifetime-tokens']);
+  });
+
+  it('should support pet-name item for future story', () => {
+    configService.setDisplayConfig('line1.items', ['expression', 'pet-name']);
+    
+    const writeCall = mockFs.writeFileSync.mock.calls[0];
+    const configJson = JSON.parse(writeCall[1] as string);
+    
+    expect(configJson.display.line1.items).toEqual(['expression', 'pet-name']);
+  });
+
+  it('should merge line1 config with defaults when partially defined', () => {
+    // Mock partial config
+    mockFs.readFileSync.mockReturnValue(JSON.stringify({
+      colors: { petExpression: '#FF0000' },
+      display: {
+        line1: { items: ['expression'] }
+        // Missing enabled property and other display properties
+      }
+    }));
+
+    const newConfigService = new ConfigService();
+    const config = newConfigService.getConfig();
+
+    expect(config.display.line1?.enabled).toBe(true); // Default
+    expect(config.display.line1?.items).toEqual(['expression']); // User setting
+    expect(config.display.line2?.enabled).toBe(true); // Default
+    expect(config.display.line3?.enabled).toBe(true); // Default
   });
 });

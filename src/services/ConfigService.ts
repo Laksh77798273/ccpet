@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { validateLine1Items } from '../core/config';
 
 export interface UserConfig {
   colors: {
@@ -25,6 +26,10 @@ export interface UserConfig {
   };
   display: {
     maxLines?: number; // 1-3, default 2
+    line1?: {
+      enabled?: boolean;
+      items?: string[]; // e.g., ['expression', 'energy-bar', 'energy-value', 'accumulated-tokens', 'lifetime-tokens', 'pet-name']
+    };
     line2?: {
       enabled?: boolean;
       items?: string[]; // e.g., ['input', 'output', 'cached', 'total']
@@ -59,6 +64,10 @@ const DEFAULT_CONFIG: UserConfig = {
   },
   display: {
     maxLines: 3,
+    line1: {
+      enabled: true,
+      items: ['expression', 'energy-bar', 'energy-value', 'accumulated-tokens', 'lifetime-tokens']
+    },
     line2: {
       enabled: true,
       items: ['input', 'output', 'cached', 'total']
@@ -128,6 +137,10 @@ export class ConfigService {
       display: {
         ...DEFAULT_CONFIG.display,
         ...userConfig.display,
+        line1: {
+          ...DEFAULT_CONFIG.display.line1,
+          ...userConfig.display?.line1
+        },
         line2: {
           ...DEFAULT_CONFIG.display.line2,
           ...userConfig.display?.line2
@@ -167,6 +180,20 @@ export class ConfigService {
     
     if (key === 'maxLines') {
       config.display.maxLines = Math.min(3, Math.max(1, Number(value)));
+    } else if (key === 'line1.enabled') {
+      config.display.line1!.enabled = Boolean(value);
+    } else if (key === 'line1.items') {
+      const items = Array.isArray(value) ? value : value.split(',').map((s: string) => s.trim());
+      const validatedItems = validateLine1Items(items);
+      
+      // Warn about invalid items
+      const invalidItems = items.filter((item: string) => !validatedItems.includes(item as any));
+      if (invalidItems.length > 0) {
+        console.warn(`Invalid line1 items ignored: ${invalidItems.join(', ')}`);
+      }
+      
+      // Use default if no valid items
+      config.display.line1!.items = validatedItems.length > 0 ? validatedItems : ['expression', 'energy-bar', 'energy-value', 'accumulated-tokens', 'lifetime-tokens'];
     } else if (key === 'line2.enabled') {
       config.display.line2!.enabled = Boolean(value);
     } else if (key === 'line2.items') {

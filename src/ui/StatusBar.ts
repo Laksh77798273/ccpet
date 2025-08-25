@@ -1,5 +1,5 @@
 import { IPetState } from '../core/Pet';
-import { PET_CONFIG } from '../core/config';
+import { PET_CONFIG, validateLine1Items, Line1ItemType } from '../core/config';
 import { ConfigService } from '../services/ConfigService';
 
 export class StatusBarFormatter {
@@ -16,15 +16,19 @@ export class StatusBarFormatter {
       const config = this.configService.getConfig();
       const lines: string[] = [];
       
-      // Line 1: Always show pet info (non-configurable)
-      const line1 = this.formatPetLine(state, animatedExpression);
-      lines.push(line1);
+      // Line 1: Configurable (with fallback to default behavior)
+      if (config.display.line1?.enabled !== false && (config.display.maxLines || 3) >= 1) {
+        const line1 = config.display.line1?.items 
+          ? this.formatConfigurablePetLine(config.display.line1.items, state, animatedExpression)
+          : this.formatPetLine(state, animatedExpression); // Fallback for backward compatibility
+        lines.push(line1);
+      }
       
       // Get available session data
       const sessionData = this.getSessionData(state);
       
       // Line 2: Configurable
-      if (config.display.line2?.enabled && (config.display.maxLines || 2) >= 2) {
+      if (config.display.line2?.enabled && (config.display.maxLines || 3) >= 2) {
         const line2 = this.formatConfigurableLine(config.display.line2.items || [], sessionData);
         if (line2) {
           lines.push(line2);
@@ -32,7 +36,7 @@ export class StatusBarFormatter {
       }
       
       // Line 3: Configurable
-      if (config.display.line3?.enabled && (config.display.maxLines || 2) >= 3) {
+      if (config.display.line3?.enabled && (config.display.maxLines || 3) >= 3) {
         const line3 = this.formatConfigurableLine(config.display.line3.items || [], sessionData);
         if (line3) {
           lines.push(line3);
@@ -57,6 +61,73 @@ export class StatusBarFormatter {
     return this.testMode ? 
       `${displayExpression} ${energyBar} ${energyValue} (${tokensDisplay}) 💖${lifetimeTokensDisplay}` :
       `${PET_CONFIG.COLORS.PET_EXPRESSION}${displayExpression}${PET_CONFIG.COLORS.RESET} ${PET_CONFIG.COLORS.ENERGY_BAR}${energyBar}${PET_CONFIG.COLORS.RESET} ${PET_CONFIG.COLORS.ENERGY_VALUE}${energyValue}${PET_CONFIG.COLORS.RESET} ${PET_CONFIG.COLORS.ACCUMULATED_TOKENS}(${tokensDisplay})${PET_CONFIG.COLORS.RESET} ${PET_CONFIG.COLORS.LIFETIME_TOKENS}💖${lifetimeTokensDisplay}${PET_CONFIG.COLORS.RESET}`;
+  }
+
+  private formatConfigurablePetLine(items: string[], state: IPetState, animatedExpression?: string): string {
+    try {
+      // Validate and filter items
+      const validItems = validateLine1Items(items);
+      if (validItems.length === 0) {
+        console.warn('No valid line1 items found, falling back to default format');
+        return this.formatPetLine(state, animatedExpression);
+      }
+
+      const line1Data = this.getLine1Data(state, animatedExpression);
+      const parts: string[] = [];
+
+      for (const item of validItems) {
+        if (line1Data[item]) {
+          const data = line1Data[item];
+          if (this.testMode) {
+            parts.push(data.value);
+          } else {
+            parts.push(`${data.color}${data.value}${PET_CONFIG.COLORS.RESET}`);
+          }
+        } else {
+          console.warn(`Line1 data not available for item: ${item}`);
+        }
+      }
+
+      return parts.length > 0 ? parts.join(' ') : this.formatPetLine(state, animatedExpression);
+    } catch (error) {
+      console.error('Error in formatConfigurablePetLine:', error);
+      return this.formatPetLine(state, animatedExpression);
+    }
+  }
+
+  private getLine1Data(state: IPetState, animatedExpression?: string): Record<Line1ItemType, { value: string; color: string }> {
+    const displayExpression = animatedExpression || state.expression;
+    const energyBar = this.generateEnergyBar(state.energy);
+    const energyValue = state.energy.toFixed(2);
+    const tokensDisplay = this.formatTokenCount(state.accumulatedTokens);
+    const lifetimeTokensDisplay = this.formatTokenCount(state.totalLifetimeTokens);
+
+    return {
+      'expression': {
+        value: displayExpression,
+        color: PET_CONFIG.COLORS.PET_EXPRESSION
+      },
+      'energy-bar': {
+        value: energyBar,
+        color: PET_CONFIG.COLORS.ENERGY_BAR
+      },
+      'energy-value': {
+        value: energyValue,
+        color: PET_CONFIG.COLORS.ENERGY_VALUE
+      },
+      'accumulated-tokens': {
+        value: `(${tokensDisplay})`,
+        color: PET_CONFIG.COLORS.ACCUMULATED_TOKENS
+      },
+      'lifetime-tokens': {
+        value: `💖${lifetimeTokensDisplay}`,
+        color: PET_CONFIG.COLORS.LIFETIME_TOKENS
+      },
+      'pet-name': {
+        value: 'Pet', // Placeholder for Story 4.2
+        color: PET_CONFIG.COLORS.PET_EXPRESSION
+      }
+    };
   }
 
   private getSessionData(state: IPetState): Record<string, { value: string; color: string }> {

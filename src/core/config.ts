@@ -17,6 +17,25 @@ export interface IAnimalConfig {
   emoji: string;
 }
 
+// Line1 支持的显示元素类型
+export type Line1ItemType = 
+  | 'expression' 
+  | 'energy-bar' 
+  | 'energy-value' 
+  | 'accumulated-tokens' 
+  | 'lifetime-tokens' 
+  | 'pet-name'; // 预留给Story 4.2
+
+// Line1 支持的元素常量
+export const LINE1_SUPPORTED_ITEMS: readonly Line1ItemType[] = [
+  'expression',
+  'energy-bar', 
+  'energy-value',
+  'accumulated-tokens',
+  'lifetime-tokens',
+  'pet-name'
+] as const;
+
 function getColorConfiguration() {
   try {
     const configService = new ConfigService();
@@ -113,4 +132,17 @@ export const PET_CONFIG = {
 export const LOGGER_CONFIG = {
   COMPONENT_NAME: 'StatusPetExtension'
 } as const;
+
+// 默认line1配置
+export const DEFAULT_LINE1_CONFIG = {
+  enabled: true,
+  items: ['expression', 'energy-bar', 'energy-value', 'accumulated-tokens', 'lifetime-tokens'] as Line1ItemType[]
+} as const;
+
+// 验证line1配置项
+export function validateLine1Items(items: string[]): Line1ItemType[] {
+  return items.filter((item): item is Line1ItemType => 
+    LINE1_SUPPORTED_ITEMS.includes(item as Line1ItemType)
+  );
+}
 
