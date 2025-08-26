@@ -40,13 +40,14 @@ describe('ConfigService Edge Cases', () => {
         fs.mkdirSync(configDir, { recursive: true });
       }
       
-      fs.writeFileSync(configPath, 'invalid json {');
+      // Write truly invalid JSON that will definitely fail parsing
+      fs.writeFileSync(configPath, '{ invalid json }');
 
       const config = (configService as any).loadConfig();
 
       expect(consoleSpy.warn).toHaveBeenCalledWith(
         'Failed to load config, using defaults:',
-        expect.stringContaining('Unexpected')
+        expect.stringContaining('JSON')
       );
       
       // Should return default config

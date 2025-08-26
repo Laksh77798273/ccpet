@@ -13,9 +13,7 @@ export interface TokenMetrics {
   contextLength: number; // Current context length in tokens (from most recent message)
 }
 
-interface SessionTracker {
-  sessionId: string;
-  lastProcessedUuid: string;
+interface GlobalTracker {
   lastProcessedTimestamp: string;
   totalProcessedTokens: number;
 }
@@ -47,44 +45,36 @@ export interface ClaudeCodeMessage {
   };
 }
 
-const SESSION_TRACKER_FILE = path.join(process.env.HOME || '', '.claude-pet', 'session-tracker.json');
+const GLOBAL_TRACKER_FILE = path.join(process.env.HOME || '', '.claude-pet', 'global-tracker.json');
 
-function loadSessionTracker(sessionId: string): SessionTracker | null {
+function loadGlobalTracker(): GlobalTracker | null {
   try {
-    if (!fs.existsSync(SESSION_TRACKER_FILE)) {
+    if (!fs.existsSync(GLOBAL_TRACKER_FILE)) {
       return null;
     }
-    const data = fs.readFileSync(SESSION_TRACKER_FILE, 'utf8');
-    const trackers: Record<string, SessionTracker> = JSON.parse(data);
-    return trackers[sessionId] || null;
+    const data = fs.readFileSync(GLOBAL_TRACKER_FILE, 'utf8');
+    return JSON.parse(data);
   } catch (error) {
     return null;
   }
 }
 
-function saveSessionTracker(tracker: SessionTracker): void {
+function saveGlobalTracker(tracker: GlobalTracker): void {
   try {
-    const dir = path.dirname(SESSION_TRACKER_FILE);
+    const dir = path.dirname(GLOBAL_TRACKER_FILE);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-
-    let trackers: Record<string, SessionTracker> = {};
-    if (fs.existsSync(SESSION_TRACKER_FILE)) {
-      const data = fs.readFileSync(SESSION_TRACKER_FILE, 'utf8');
-      trackers = JSON.parse(data);
-    }
     
-    trackers[tracker.sessionId] = tracker;
-    fs.writeFileSync(SESSION_TRACKER_FILE, JSON.stringify(trackers, null, 2));
+    fs.writeFileSync(GLOBAL_TRACKER_FILE, JSON.stringify(tracker, null, 2));
   } catch (error) {
-    console.error('Failed to save session tracker:', error);
+    console.error('Failed to save global tracker:', error);
   }
 }
 
 /**
  * Processes a JSONL transcript file to extract INCREMENTAL token metrics
- * Only processes new messages since last run for the given session
+ * Only processes new messages since last run based on global timestamp
  */
 export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetrics> {
   let inputTokens = 0;
@@ -94,8 +84,6 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
   let sessionTotalOutputTokens = 0;
   let sessionTotalCachedTokens = 0;
   let contextLength = 0;
-  let sessionId = '';
-  let lastProcessedUuid = '';
   let lastProcessedTimestamp = '';
 
   try {
@@ -112,7 +100,11 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
       };
     }
 
-    // First pass: get sessionId and find where to start processing
+    // Load global tracker to find last processed timestamp
+    const tracker = loadGlobalTracker();
+    const lastGlobalTimestamp = tracker ? new Date(tracker.lastProcessedTimestamp).getTime() : 0;
+    
+    // Read and parse all messages
     const fileStream = fs.createReadStream(transcriptPath);
     const rl = readline.createInterface({
       input: fileStream,
@@ -125,31 +117,11 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
       
       try {
         const message: ClaudeCodeMessage = JSON.parse(line);
-        if (message.sessionId) {
-          sessionId = message.sessionId;
-        }
         messages.push(message);
       } catch (parseError) {
         continue;
       }
     }
-
-    if (!sessionId) {
-      return { 
-        inputTokens: 0, 
-        outputTokens: 0, 
-        cachedTokens: 0,
-        totalTokens: 0,
-        sessionTotalInputTokens: 0,
-        sessionTotalOutputTokens: 0,
-        sessionTotalCachedTokens: 0,
-        contextLength: 0
-      };
-    }
-
-    // Load session tracker to find last processed position
-    const tracker = loadSessionTracker(sessionId);
-    let startProcessing = tracker ? false : true; // If no tracker, process from beginning
     
 
     // Find the most recent main chain message for context length calculation
@@ -197,16 +169,16 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
       }
     }
 
-    // Process messages incrementally
+    // Process messages incrementally - only process messages newer than last processed timestamp
     for (const message of messages) {
       const usage = message.usage || (message.message && message.message.usage);
 
-      // If we have a tracker, skip until we find the last processed message
-      if (tracker && !startProcessing) {
-        if (message.uuid === tracker.lastProcessedUuid) {
-          startProcessing = true;
+      // Skip messages that are older than or equal to last processed timestamp
+      if (message.timestamp && lastGlobalTimestamp > 0) {
+        const messageTimestamp = new Date(message.timestamp).getTime();
+        if (messageTimestamp <= lastGlobalTimestamp) {
+          continue; // Skip already processed messages
         }
-        continue; // Skip messages until we find the last processed one
       }
 
       // Process this message for incremental tokens
@@ -216,24 +188,23 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
         cachedTokens += (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0);
       }
 
-      // Update tracking info
-      if (message.uuid) {
-        lastProcessedUuid = message.uuid;
-      }
+      // Update tracking info - keep track of the latest timestamp
       if (message.timestamp) {
-        lastProcessedTimestamp = message.timestamp;
+        const messageTimestamp = new Date(message.timestamp).getTime();
+        const lastTimestamp = lastProcessedTimestamp ? new Date(lastProcessedTimestamp).getTime() : 0;
+        if (messageTimestamp > lastTimestamp) {
+          lastProcessedTimestamp = message.timestamp;
+        }
       }
     }
 
-    // Save updated session tracker
-    if (lastProcessedUuid) {
-      const newTracker: SessionTracker = {
-        sessionId,
-        lastProcessedUuid,
+    // Save updated global tracker
+    if (lastProcessedTimestamp) {
+      const newTracker: GlobalTracker = {
         lastProcessedTimestamp,
         totalProcessedTokens: (tracker?.totalProcessedTokens || 0) + inputTokens + outputTokens + cachedTokens
       };
-      saveSessionTracker(newTracker);
+      saveGlobalTracker(newTracker);
     }
 
     return {
