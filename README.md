@@ -94,6 +94,7 @@ ccpet config path        # Show configuration file location
 ```bash
 # Colors (format: #RRGGBB or #RRGGBB:bright or #RRGGBB:bright:bold)
 ccpet config set colors.petExpression "#FF0000:bright:bold"
+ccpet config set colors.petName "#FF69B4:bright"
 ccpet config set colors.energyBar "#00FF00"
 ccpet config set colors.energyValue "#00FFFF"
 ccpet config set colors.lifetimeTokens "#FF00FF"
@@ -104,10 +105,15 @@ ccpet config set pet.decayRate 0.0231
 
 # Multi-line display (NEW!)
 ccpet config set display.maxLines 3                    # Show up to 3 lines (1-3)
+ccpet config set display.line1.enabled true            # Enable/disable custom line 1
 ccpet config set display.line2.enabled true            # Enable/disable line 2
 ccpet config set display.line2.items "input,output"    # What to show on line 2
 ccpet config set display.line3.enabled true            # Enable/disable line 3
 ccpet config set display.line3.items "total"           # What to show on line 3
+
+# Pet display options
+ccpet config set pet.showName true                     # Show pet name in status
+ccpet config set pet.namePosition "before"             # Name position: "before" or "after" expression
 ```
 
 **Available Display Items:** `input`, `output`, `cached`, `total`, `context-length`, `context-percentage`, `context-percentage-usable`, `cost`
@@ -138,7 +144,7 @@ ccpet check -w --interval 45
 
 **Example Output:**
 ```text
-🐶(^_^) ●●●●●●●●●● 100.00 (838.9K) 💖25.84M
+Fluffy 🐶(^_^) ●●●●●●●●●● 100.00 (838.9K) 💖25.84M
 ⏰ 距离上次喂食: 0分钟前
 ⏳ 下次更新: 10秒
 ```
@@ -149,40 +155,58 @@ ccpet check -w --interval 45
 
 ### Default 3-Line Display
 ```text
-(^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
+Luna 🐶(^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
 Input: 2847 Output: 1256 Cached: 512 Total: 4615
 Ctx: 2.4K Ctx: 12.0% Ctx(u): 88.5% Cost: $0.15
 ```
 
-**Note**: Context metrics (Ctx(u)) now display in light green by default. Cost metrics show the total USD cost of your current session.
+**Note**: Pet names are displayed before the expression by default. Context metrics (Ctx(u)) display in light green. Cost metrics show the total USD cost of your current session.
 
 ### Single Line (Minimal)
 Configure with: `ccpet config set display.maxLines 1`
 ```text
-(^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
+Luna 🐶(^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
 ```
 
-### 2-Line Display (Minimal)
+### 2-Line Display (Balanced)
 Configure with: `ccpet config set display.maxLines 2`
+```text
+Luna 🐶(^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
+Input: 2847 Output: 1256 Cached: 512 Total: 4615
+```
+
+### Custom Display Examples
+
+#### With Pet Name Hidden
+```bash
+ccpet config set pet.showName false
+```
 ```text
 (^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
 Input: 2847 Output: 1256 Cached: 512 Total: 4615
 ```
 
-### Custom 3-Line Display
-Configure with:
+#### Name After Expression
+```bash
+ccpet config set pet.namePosition "after"
+```
+```text
+🐶(^o^) Luna ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
+```
+
+#### Custom Line Configuration
 ```bash
 ccpet config set display.line2.items "input,output"
 ccpet config set display.line3.items "total,context-percentage-usable"
 ```
 ```text
-(^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
+Luna 🐶(^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
 Input: 2847 Output: 1256
 Total: 4615 Ctx(u): 88.5%
 ```
 
 **Display Format:**
-- **Line 1** (Fixed): `[expression] [energy_bar] [energy_value] ([accumulated_tokens]) 💖[lifetime_tokens]`
+- **Line 1** (Configurable): `[name] [animal_emoji][expression] [energy_bar] [energy_value] ([accumulated_tokens]) 💖[lifetime_tokens]`
 - **Line 2** (Configurable): Custom items you choose
 - **Line 3** (Configurable): Custom items you choose
 
@@ -224,6 +248,19 @@ Pet state is stored in `~/.claude-pet/pet-state.json` with the following structu
 - `accumulatedTokens`: Tokens waiting to convert to energy
 
 The system automatically adds missing fields (like `birthTime`) for backward compatibility.
+
+### Pet Naming System
+ccpet features a **smart pet naming system** with cultural diversity:
+
+- **Random Name Generation**: Each pet gets a unique random name from a curated list
+- **Bilingual Support**: Both English and Chinese names available
+- **Cultural Diversity**: Names from various origins (Japanese, Chinese, English, etc.)
+- **Persistent Identity**: Pet names are saved and persist across sessions
+- **Auto-Assignment**: New pets automatically get assigned a name
+
+**Sample Names:**
+- English: Whiskers, Shadow, Luna, Max, Bella, Charlie
+- Chinese: 小白 (Xiaobai), 毛毛 (Maomao), 花花 (Huahua), 团子 (Tuanzi)
 
 ## Development
 

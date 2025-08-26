@@ -134,7 +134,7 @@ export class StatusBarFormatter {
       },
       'pet-name': {
         value: state.petName || 'Pet',
-        color: colors.PET_EXPRESSION
+        color: colors.PET_NAME
       }
     };
   }

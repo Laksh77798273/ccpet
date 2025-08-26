@@ -6,6 +6,7 @@ import { validateLine1Items } from '../core/config';
 export interface UserConfig {
   colors: {
     petExpression?: string;
+    petName?: string;
     energyBar?: string;
     energyValue?: string;
     accumulatedTokens?: string;
@@ -44,6 +45,7 @@ export interface UserConfig {
 const DEFAULT_CONFIG: UserConfig = {
   colors: {
     petExpression: '#FFFF00:bright:bold',
+    petName: '#00FFFF:bright',
     energyBar: '#00FF00',
     energyValue: '#00FFFF',
     accumulatedTokens: '#778899',

@@ -43,6 +43,7 @@ function getColorConfiguration(configService?: ConfigService) {
     
     return {
       PET_EXPRESSION: userConfig.colors.petExpression || '#FFFF00:bright:bold',
+      PET_NAME: userConfig.colors.petName || '#00FFFF:bright',
       ENERGY_BAR: userConfig.colors.energyBar || '#00FF00',
       ENERGY_VALUE: userConfig.colors.energyValue || '#00FFFF',
       ACCUMULATED_TOKENS: userConfig.colors.accumulatedTokens || '#778899',
@@ -61,6 +62,7 @@ function getColorConfiguration(configService?: ConfigService) {
     // Fallback to defaults if config loading fails
     return {
       PET_EXPRESSION: '#FFFF00:bright:bold',
+      PET_NAME: '#00FFFF:bright',
       ENERGY_BAR: '#00FF00',
       ENERGY_VALUE: '#00FFFF',
       ACCUMULATED_TOKENS: '#778899',
@@ -81,6 +83,7 @@ function getColorConfiguration(configService?: ConfigService) {
 function getDefaultColorConfiguration() {
   return {
     PET_EXPRESSION: '#FFFF00:bright:bold',
+    PET_NAME: '#00FFFF:bright',
     ENERGY_BAR: '#00FF00',
     ENERGY_VALUE: '#00FFFF',
     ACCUMULATED_TOKENS: '#778899',

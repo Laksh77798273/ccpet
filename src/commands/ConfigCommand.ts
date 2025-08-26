@@ -46,6 +46,7 @@ export class ConfigCommand {
     console.log('');
     console.log('Configuration keys:');
     console.log('  colors.petExpression     Pet expression color');
+    console.log('  colors.petName           Pet name color');
     console.log('  colors.energyBar         Energy bar color');
     console.log('  colors.energyValue       Energy value color');
     console.log('  colors.accumulatedTokens Accumulated tokens color');

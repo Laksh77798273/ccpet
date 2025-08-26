@@ -198,13 +198,19 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
       }
     }
 
-    // Save updated global tracker
+    // Save updated global tracker - only if we have a newer timestamp
     if (lastProcessedTimestamp) {
-      const newTracker: GlobalTracker = {
-        lastProcessedTimestamp,
-        totalProcessedTokens: (tracker?.totalProcessedTokens || 0) + inputTokens + outputTokens + cachedTokens
-      };
-      saveGlobalTracker(newTracker);
+      const newTimestamp = new Date(lastProcessedTimestamp).getTime();
+      const currentTimestamp = tracker ? new Date(tracker.lastProcessedTimestamp).getTime() : 0;
+      
+      // Only update if the new timestamp is actually newer than the stored one
+      if (newTimestamp > currentTimestamp) {
+        const newTracker: GlobalTracker = {
+          lastProcessedTimestamp,
+          totalProcessedTokens: (tracker?.totalProcessedTokens || 0) + inputTokens + outputTokens + cachedTokens
+        };
+        saveGlobalTracker(newTracker);
+      }
     }
 
     return {
