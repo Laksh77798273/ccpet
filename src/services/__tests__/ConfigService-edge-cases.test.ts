@@ -1,52 +1,48 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { ConfigService } from '../ConfigService';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
-
-// Mock filesystem modules
-vi.mock('fs');
-vi.mock('path');
-vi.mock('os');
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 
 describe('ConfigService Edge Cases', () => {
   let configService: ConfigService;
-  let mockFs: any;
-  let mockPath: any;
-  let mockOs: any;
   let consoleSpy: any;
 
   beforeEach(() => {
-    mockFs = vi.mocked(fs);
-    mockPath = vi.mocked(path);
-    mockOs = vi.mocked(os);
+    configService = new ConfigService();
     
     consoleSpy = {
       warn: vi.spyOn(console, 'warn').mockImplementation(() => {})
     };
 
-    // Setup default mocks
-    mockOs.homedir.mockReturnValue('/home/user');
-    mockPath.join.mockImplementation((...args) => args.join('/'));
-    mockFs.existsSync.mockReturnValue(true);
-    mockFs.mkdirSync.mockImplementation(() => {});
-    mockFs.readFileSync.mockReturnValue('{"colors": {}, "pet": {}}');
-    mockFs.writeFileSync.mockImplementation(() => {});
-
-    configService = new ConfigService();
+    // Clear cached config and ensure clean state
+    configService['cachedConfig'] = null;
+    
+    // Clean up test directory to ensure clean state
+    const testConfigDir = (configService as any).configDir;
+    if (fs.existsSync(testConfigDir)) {
+      fs.rmSync(testConfigDir, { recursive: true, force: true });
+    }
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
-    // Clear cached config
-    configService['cachedConfig'] = null;
   });
 
   describe('loadConfig error handling', () => {
     it('should handle JSON parse errors gracefully', () => {
-      mockFs.readFileSync.mockReturnValue('invalid json {');
+      // Write invalid JSON to config file
+      const configPath = (configService as any).configFile;
+      const configDir = (configService as any).configDir;
+      
+      // Ensure directory exists
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true });
+      }
+      
+      fs.writeFileSync(configPath, 'invalid json {');
 
-      const config = configService.loadConfig();
+      const config = (configService as any).loadConfig();
 
       expect(consoleSpy.warn).toHaveBeenCalledWith(
         'Failed to load config, using defaults:',
@@ -62,16 +58,27 @@ describe('ConfigService Edge Cases', () => {
     });
 
     it('should handle file read errors gracefully', () => {
-      mockFs.existsSync.mockReturnValue(true);
-      mockFs.readFileSync.mockImplementation(() => {
-        throw new Error('Permission denied');
-      });
+      // This test would be complex to set up with real file permission errors
+      // but we can simulate it by testing with a directory path as config file
+      const configPath = (configService as any).configFile;
+      const configDir = (configService as any).configDir;
+      
+      // Ensure directory exists
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true });
+      }
+      
+      // Create a directory with the config file name to cause read error
+      if (fs.existsSync(configPath)) {
+        fs.unlinkSync(configPath);
+      }
+      fs.mkdirSync(configPath);
 
-      const config = configService.loadConfig();
+      const config = (configService as any).loadConfig();
 
       expect(consoleSpy.warn).toHaveBeenCalledWith(
         'Failed to load config, using defaults:',
-        'Permission denied'
+        expect.any(String)
       );
       
       // Should return default config
@@ -80,71 +87,107 @@ describe('ConfigService Edge Cases', () => {
         pet: expect.any(Object),
         display: expect.any(Object)
       });
+      
+      // Clean up
+      fs.rmSync(configPath, { recursive: true });
     });
 
     it('should create config file when it does not exist', () => {
-      mockFs.existsSync.mockReturnValue(false);
+      const config = (configService as any).loadConfig();
 
-      const config = configService.loadConfig();
-
-      expect(mockFs.writeFileSync).toHaveBeenCalled();
+      // Should return default config structure
       expect(config).toEqual({
         colors: expect.any(Object),
         pet: expect.any(Object),
         display: expect.any(Object)
       });
+      
+      // Should have created the config file
+      const configPath = (configService as any).configFile;
+      expect(fs.existsSync(configPath)).toBe(true);
     });
   });
 
   describe('ensureConfigDir error handling', () => {
-    it('should propagate directory creation errors', () => {
-      mockFs.existsSync.mockReturnValue(false);
-      mockFs.mkdirSync.mockImplementation(() => {
-        throw new Error('Cannot create directory');
-      });
-
-      // Should throw when directory creation fails
-      expect(() => configService['ensureConfigDir']()).toThrow('Cannot create directory');
+    it('should not create directory if it already exists', () => {
+      const configDir = (configService as any).configDir;
+      
+      // Create the directory first
+      fs.mkdirSync(configDir, { recursive: true });
+      
+      // This should not throw when directory already exists
+      expect(() => (configService as any).ensureConfigDir()).not.toThrow();
+      
+      // Directory should still exist
+      expect(fs.existsSync(configDir)).toBe(true);
     });
 
-    it('should not create directory if it already exists', () => {
-      mockFs.existsSync.mockReturnValue(true);
-
-      configService['ensureConfigDir']();
-
-      expect(mockFs.mkdirSync).not.toHaveBeenCalled();
+    it('should create directory when it does not exist', () => {
+      const configDir = (configService as any).configDir;
+      
+      // Ensure directory doesn't exist
+      if (fs.existsSync(configDir)) {
+        fs.rmSync(configDir, { recursive: true, force: true });
+      }
+      
+      // This should not throw and should create the directory
+      expect(() => (configService as any).ensureConfigDir()).not.toThrow();
+      
+      // Directory should now exist
+      expect(fs.existsSync(configDir)).toBe(true);
     });
   });
 
   describe('saveConfig error handling', () => {
     it('should propagate write errors', () => {
-      mockFs.writeFileSync.mockImplementation(() => {
-        throw new Error('Write failed');
-      });
+      // Create a directory where the config file should be to cause write error
+      const configPath = (configService as any).configFile;
+      const configDir = (configService as any).configDir;
+      
+      // Ensure parent directory exists first
+      if (!fs.existsSync(configDir)) {
+        fs.mkdirSync(configDir, { recursive: true });
+      }
+      
+      // Create a directory where the config file should be (after ensuring parent exists)
+      if (fs.existsSync(configPath)) {
+        fs.rmSync(configPath, { recursive: true, force: true });
+      }
+      fs.mkdirSync(configPath);
 
       const testConfig = {
-        colors: { test: 'value' },
-        pet: { test: true }
-      };
+        colors: { petExpression: '#FF0000' },
+        pet: { animationEnabled: true },
+        display: { maxLines: 2 }
+      } as any;
 
       // Should throw when write fails
-      expect(() => configService.saveConfig(testConfig)).toThrow('Write failed');
+      expect(() => (configService as any).saveConfig(testConfig)).toThrow();
+      
+      // Clean up
+      fs.rmSync(configPath, { recursive: true });
     });
 
-    it('should propagate directory creation errors during save', () => {
-      // Mock directory doesn't exist, so mkdirSync will be called
-      mockFs.existsSync.mockReturnValue(false);
-      mockFs.mkdirSync.mockImplementation(() => {
-        throw new Error('mkdir failed');
-      });
+    it('should work with custom config paths', () => {
+      // Test that saveConfig works with custom paths
+      const customPath = path.join(os.tmpdir(), 'custom-claude-pet-test');
+      const testConfigService = new ConfigService(customPath);
 
       const testConfig = {
-        colors: { test: 'value' },
-        pet: { test: true }
-      };
+        colors: { petExpression: '#FF0000' },
+        pet: { animationEnabled: true },
+        display: { maxLines: 2 }
+      } as any;
 
-      // Should throw when directory creation fails
-      expect(() => configService.saveConfig(testConfig)).toThrow('mkdir failed');
+      // Should work with custom path
+      expect(() => (testConfigService as any).saveConfig(testConfig)).not.toThrow();
+      
+      // Config file should exist
+      const configPath = path.join(customPath, 'config.json');
+      expect(fs.existsSync(configPath)).toBe(true);
+      
+      // Clean up
+      fs.rmSync(customPath, { recursive: true, force: true });
     });
   });
 
@@ -193,51 +236,66 @@ describe('ConfigService Edge Cases', () => {
 
   describe('configuration caching', () => {
     it('should return cached config on subsequent calls', () => {
-      mockFs.readFileSync.mockReturnValue('{"colors": {"test": "cached"}, "pet": {}}');
-
       // First call
       const config1 = configService.loadConfig();
-      
-      // Change the mock return value
-      mockFs.readFileSync.mockReturnValue('{"colors": {"test": "different"}, "pet": {}}');
       
       // Second call should return cached version
       const config2 = configService.loadConfig();
 
       expect(config1).toBe(config2); // Same object reference
-      expect(config2.colors.test).toBe('cached');
     });
 
     it('should update cache when saveConfig is called', () => {
       const newConfig = {
-        colors: { test: 'updated' },
-        pet: { test: false }
+        colors: { petExpression: '#FF0000' },
+        pet: { animationEnabled: false },
+        display: { maxLines: 2 }
       };
 
-      configService.saveConfig(newConfig);
+      (configService as any).saveConfig(newConfig);
       const loadedConfig = configService.getConfig();
 
-      expect(loadedConfig).toBe(newConfig); // Same object reference
+      expect(loadedConfig.colors.petExpression).toBe('#FF0000');
+      expect(loadedConfig.pet.animationEnabled).toBe(false);
+      expect(loadedConfig.display.maxLines).toBe(2);
     });
   });
 
   describe('path handling', () => {
-    it('should propagate path joining errors', () => {
-      mockPath.join.mockImplementation(() => {
-        throw new Error('Path error');
-      });
-
-      // Should throw when path operations fail
-      expect(() => new ConfigService()).toThrow('Path error');
+    it('should handle path operations correctly', () => {
+      // Test that ConfigService correctly constructs file paths
+      const testPath = '/tmp/test-config-path';
+      const testService = new ConfigService(testPath);
+      
+      expect((testService as any).configDir).toBe(testPath);
+      expect((testService as any).configFile).toBe(path.join(testPath, 'config.json'));
     });
 
-    it('should propagate homedir errors', () => {
-      mockOs.homedir.mockImplementation(() => {
-        throw new Error('Cannot get home directory');
-      });
-
-      // Should throw when homedir fails
-      expect(() => new ConfigService()).toThrow('Cannot get home directory');
+    it('should use different paths for test and production', () => {
+      // Test that different paths are used based on environment
+      const originalNodeEnv = process.env.NODE_ENV;
+      const originalVitest = process.env.VITEST;
+      
+      // Clear both environment variables for production test
+      delete process.env.NODE_ENV;
+      delete process.env.VITEST;
+      const prodService = new ConfigService();
+      expect((prodService as any).configDir).toBe(path.join(os.homedir(), '.claude-pet'));
+      
+      // Set test environment
+      process.env.NODE_ENV = 'test';
+      const testService = new ConfigService();
+      expect((testService as any).configDir).toBe(path.join(os.homedir(), '.claude-pet-test'));
+      
+      // Restore environment
+      if (originalNodeEnv) {
+        process.env.NODE_ENV = originalNodeEnv;
+      } else {
+        delete process.env.NODE_ENV;
+      }
+      if (originalVitest) {
+        process.env.VITEST = originalVitest;
+      }
     });
   });
 

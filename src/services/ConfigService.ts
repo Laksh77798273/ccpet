@@ -84,9 +84,17 @@ export class ConfigService {
   private readonly configFile: string;
   private cachedConfig: UserConfig | null = null;
 
-  constructor() {
-    this.configDir = path.join(os.homedir(), '.claude-pet');
-    this.configFile = path.join(this.configDir, 'config.json');
+  constructor(testConfigPath?: string) {
+    if (testConfigPath) {
+      this.configDir = testConfigPath;
+      this.configFile = path.join(testConfigPath, 'config.json');
+    } else {
+      // Use different paths for test and production environments
+      const isTest = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
+      const configDirName = isTest ? '.claude-pet-test' : '.claude-pet';
+      this.configDir = path.join(os.homedir(), configDirName);
+      this.configFile = path.join(this.configDir, 'config.json');
+    }
   }
 
   private ensureConfigDir(): void {
