@@ -90,6 +90,18 @@ ccpet config reset       # 重置为默认配置
 ccpet config path        # 显示配置文件位置
 ```
 
+#### 重置命令
+```bash
+ccpet reset              # 触发宠物死亡和墓地保存过程
+ccpet reset --help       # 显示重置命令帮助
+```
+使用 `ccpet reset` 来：
+- ✅ 手动触发宠物死亡和保存过程
+- ✅ 将当前宠物保存到墓地并保留完整历史
+- ✅ 创建一个拥有随机名字和全新开始的宠物
+- ✅ 测试墓地功能
+- ✅ **新功能:** 在 `~/.claude-pet/graveyard/` 中自动保存历史
+
 **配置选项：**
 ```bash
 # 颜色（格式：#RRGGBB 或 #RRGGBB:bright 或 #RRGGBB:bright:bold）
@@ -225,10 +237,44 @@ Total: 4615 Ctx(u): 88.5%
 
 ### 😴 当宠物死亡时
 如果你的宠物能量降到 0：
-- 所有统计数据都会重置（终身 token、累计 token）
-- 宠物重生时会获得新的诞生时间
-- 你的宠物可以通过继续使用 Claude Code 复活
-- 每个新 token 都有助于从头重建你的宠物
+- **历史保存**: 你的宠物完整历史会自动保存到墓地
+- **新宠物诞生**: 一个拥有随机名字和全新开始的宠物会诞生
+- **传承保护**: 所有之前的宠物记录都会安全存储在 `~/.claude-pet/graveyard/`
+- 每个新 token 都有助于你的新宠物从零开始成长
+
+### 🪦 宠物墓地与历史记录保存
+ccpet 会在宠物去世时自动保存它们的传承：
+
+**自动历史保存:**
+- 当宠物死亡（能量 = 0）时，它们的完整状态会移动到 `~/.claude-pet/graveyard/{宠物名}/`
+- 每个宠物都有自己的专用文件夹，最终状态得到保存
+- 同名宠物通过序号处理（例如，`Fluffy-2/`、`Fluffy-3/`）
+
+**墓地结构:**
+```text
+~/.claude-pet/
+├── pet-state.json          # 当前宠物
+└── graveyard/
+    ├── Fluffy/
+    │   └── pet-state.json  # 完整最终状态
+    ├── Shadow/
+    │   └── pet-state.json  # 完整最终状态
+    ├── Luna-2/             # 同名处理
+    │   └── pet-state.json
+    └── ...
+```
+
+**保存内容:**
+- ✅ 宠物名字和动物类型
+- ✅ 最终能量等级和表情
+- ✅ 完整的终身 token 统计
+- ✅ 诞生时间和喂食历史
+- ✅ 所有累计成就
+
+**原子操作:**
+- 安全的文件操作防止转换过程中的数据丢失
+- 备份和回滚机制确保数据完整性
+- 即使在系统错误时，你的宠物历史也永远不会丢失
 
 ## 故障排除
 
@@ -247,13 +293,21 @@ Total: 4615 Ctx(u): 88.5%
 - `energy`: 当前能量等级 (0-100)
 - `expression`: 当前面部表情
 - `animalType`: 宠物种类 (cat, dog, rabbit, panda, fox)
+- `petName`: 每个宠物的唯一名字（自动生成）
 - `birthTime`: 宠物诞生/重生时间 (ISO时间戳)
 - `lastFeedTime`: 上次喂食时间戳
 - `totalTokensConsumed`: 本生命周期消耗的总token数
 - `totalLifetimeTokens`: 终身token消耗量
 - `accumulatedTokens`: 等待转换为能量的token数
+- `lastDecayTime`: 上次能量衰减计算时间戳
+- 会话指标: `sessionTotalInputTokens`, `sessionTotalOutputTokens` 等
 
-系统会自动为旧版本状态文件添加缺失字段（如 `birthTime`）以保持向后兼容性。
+**墓地存储:**
+- 历史宠物存储在 `~/.claude-pet/graveyard/{宠物名}/pet-state.json`
+- 完整状态保存，包含所有统计和时间戳
+- 原子文件操作确保转换过程中不会丢失数据
+
+系统会自动为旧版本状态文件添加缺失字段（如 `birthTime` 和 `petName`）以保持向后兼容性。
 
 ### 宠物命名系统
 ccpet 具有**智能宠物命名系统**，支持文化多样性：

@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { PetStorage } from '../services/PetStorage';
 
 export class ResetCommand {
   name = 'reset';
@@ -14,12 +15,30 @@ export class ResetCommand {
       const sessionFile = path.join(petDir, 'session-tracker.json');
 
       let filesRemoved = 0;
+      const storage = new PetStorage();
 
-      // Remove pet state file
+      // Handle pet state file with graveyard preservation
       if (fs.existsSync(stateFile)) {
-        fs.unlinkSync(stateFile);
-        filesRemoved++;
-        console.log('🗑️  Removed pet-state.json');
+        try {
+          const currentState = storage.loadState();
+          if (currentState) {
+            // Move to graveyard instead of deleting
+            storage.moveToGraveyard(currentState);
+            console.log(`🪦 Moved pet "${currentState.petName}" to graveyard`);
+            filesRemoved++;
+          } else {
+            // If no valid state, just remove the file
+            fs.unlinkSync(stateFile);
+            console.log('🗑️  Removed invalid pet-state.json');
+            filesRemoved++;
+          }
+        } catch (graveyardError) {
+          // Fallback to deletion if graveyard fails
+          console.warn('⚠️  Failed to move to graveyard, removing file:', graveyardError);
+          fs.unlinkSync(stateFile);
+          console.log('🗑️  Removed pet-state.json');
+          filesRemoved++;
+        }
       }
 
       // Remove animation counter file
@@ -39,7 +58,7 @@ export class ResetCommand {
       if (filesRemoved === 0) {
         console.log('ℹ️  No pet state files found to reset');
       } else {
-        console.log(`✅ Pet reset complete! Removed ${filesRemoved} state file(s)`);
+        console.log(`✅ Pet reset complete! Processed ${filesRemoved} file(s)`);
         console.log('🐣 Your pet will be reborn on next use');
       }
 

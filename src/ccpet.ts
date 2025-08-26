@@ -200,14 +200,27 @@ class ClaudeCodeStatusLine {
 
   public adoptNewPet(): void {
     if (this.pet.isDead()) {
-      this.pet.resetToInitialState();
+      // Save current deceased pet to graveyard before creating new one
+      this.pet.resetToInitialState((currentState: IPetState) => {
+        try {
+          this.storage.moveToGraveyard(currentState);
+          console.log(`Moved deceased pet "${currentState.petName}" to graveyard`);
+        } catch (error) {
+          console.error('Failed to move pet to graveyard:', error);
+          // Continue with reset even if graveyard save fails
+        }
+      });
+      
       this.saveState();
+      
+      const newPetState = this.pet.getState();
+      console.log(`New pet "${newPetState.petName}" adopted successfully`);
       
       // Show success notification if VSCode API is available
       if (typeof window !== 'undefined' && window.vscode?.postMessage) {
         window.vscode.postMessage({
           command: 'showInformationMessage',
-          text: 'Successfully adopted a new pet! Your pet is now happy and full of energy.'
+          text: `Successfully adopted a new pet named "${newPetState.petName}"! Your pet is now happy and full of energy.`
         });
       }
     }

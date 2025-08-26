@@ -4,10 +4,23 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
+// Mock filesystem operations
+vi.mock('fs');
+vi.mock('os');
+vi.mock('path');
+
 describe('ConfigService Display Configuration', () => {
   let configService: ConfigService;
 
   beforeEach(() => {
+    // Setup mocks
+    vi.mocked(os.homedir).mockReturnValue('/mock/home');
+    vi.mocked(path.join).mockImplementation((...paths) => paths.join('/'));
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.mkdirSync).mockReturnValue(undefined);
+    vi.mocked(fs.writeFileSync).mockReturnValue(undefined);
+    vi.mocked(fs.readFileSync).mockReturnValue('{}');
+    
     configService = new ConfigService();
     // Clear any cached config to ensure fresh state for each test
     (configService as any).cachedConfig = null;

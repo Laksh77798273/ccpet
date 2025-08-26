@@ -186,28 +186,38 @@ export class Pet {
     return this.state.energy === 0;
   }
 
-  public resetToInitialState(): void {
+  public resetToInitialState(onGraveyardSave?: (currentState: IPetState) => void): void {
     try {
+      // Step 1: Preserve current state history before reset
+      if (onGraveyardSave && this.isDead()) {
+        try {
+          onGraveyardSave({ ...this.state });
+        } catch (graveyardError) {
+          console.error('Graveyard callback failed, but continuing with reset:', graveyardError);
+        }
+      }
+
+      // Step 2: Initialize new pet state
       const now = new Date();
-      // 重置时随机选择一个新的动物类型
       const newAnimalType = Pet.getRandomAnimalType();
       
       this.state = {
         energy: this.deps.config.INITIAL_ENERGY,
         expression: this.deps.config.STATE_EXPRESSIONS.HAPPY,
-        animalType: newAnimalType, // 随机分配新的动物类型
-        birthTime: now, // 设置新的诞生时间
+        animalType: newAnimalType,
+        birthTime: now,
         lastFeedTime: now,
         totalTokensConsumed: 0,
         accumulatedTokens: 0,
-        totalLifetimeTokens: 0, // 宠物死亡后重新开始，清零所有token计数
+        totalLifetimeTokens: 0,
         lastDecayTime: now,
         sessionTotalInputTokens: 0,
         sessionTotalOutputTokens: 0,
         sessionTotalCachedTokens: 0,
-        petName: generateRandomPetName() // 为新宠物分配随机名称
+        petName: generateRandomPetName()
       };
-      console.log(`Pet reborn as ${newAnimalType} type`); // 调试日志
+      
+      console.log(`Pet reborn as ${newAnimalType} type with name: ${this.state.petName}`);
       this._updateExpression();
       this._notify();
     } catch (error) {

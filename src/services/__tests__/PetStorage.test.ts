@@ -425,6 +425,205 @@ describe('PetStorage Service', () => {
     });
   });
 
+  describe('moveToGraveyard', () => {
+    const mockGraveyardDir = '/mock/home/.claude-pet/graveyard';
+    const mockPetState = createMockPetState({ petName: 'Fluffy' });
+
+    beforeEach(() => {
+      vi.mocked(fs.copyFileSync).mockReturnValue(undefined);
+      vi.mocked(fs.unlinkSync).mockReturnValue(undefined);
+    });
+
+    it('should move pet to graveyard directory', () => {
+      let writeFileCalled = false;
+      vi.mocked(fs.writeFileSync).mockImplementation(() => {
+        writeFileCalled = true;
+      });
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        if (path.toString().includes('/graveyard/Fluffy') && !path.toString().includes('pet-state.json')) {
+          return false; // Graveyard directory doesn't exist initially
+        }
+        if (path.toString().includes('graveyard') && path.toString().includes('pet-state.json')) {
+          return writeFileCalled; // Graveyard file exists after write
+        }
+        return true; // Other paths exist
+      });
+      
+      const storage = new PetStorage();
+      storage.moveToGraveyard(mockPetState);
+
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        '/mock/home/.claude-pet/graveyard/Fluffy/pet-state.json',
+        JSON.stringify(mockPetState, null, 2),
+        'utf8'
+      );
+    });
+
+    it('should handle same name conflicts with sequential numbering', () => {
+      let existsCalls = 0;
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        if (path === '/mock/home/.claude-pet/graveyard/Fluffy') {
+          return true; // First directory exists
+        }
+        if (path === '/mock/home/.claude-pet/graveyard/Fluffy-2') {
+          return false; // Second directory doesn't exist
+        }
+        return true;
+      });
+
+      const storage = new PetStorage();
+      storage.moveToGraveyard(mockPetState);
+
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        '/mock/home/.claude-pet/graveyard/Fluffy-2/pet-state.json',
+        JSON.stringify(mockPetState, null, 2),
+        'utf8'
+      );
+    });
+
+    it('should sanitize unsafe pet names', () => {
+      const unsafePetState = createMockPetState({ petName: '../evil/pet' });
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        if (path.toString().includes('graveyard') && path.toString().includes('pet-state.json')) {
+          return true; // Graveyard file exists for verification
+        }
+        if (path.toString().includes('/graveyard/__evil_pet')) {
+          return false; // Graveyard directory doesn't exist initially
+        }
+        return true; // Other paths exist
+      });
+
+      const storage = new PetStorage();
+      storage.moveToGraveyard(unsafePetState);
+
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        '/mock/home/.claude-pet/graveyard/__evil_pet/pet-state.json',
+        expect.any(String),
+        'utf8'
+      );
+    });
+
+    it('should handle long pet names by truncating', () => {
+      const longName = 'a'.repeat(150);
+      const longNamePetState = createMockPetState({ petName: longName });
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        if (path.toString().includes('graveyard') && path.toString().includes('pet-state.json')) {
+          return true; // Graveyard file exists for verification
+        }
+        if (path.toString().includes(`/graveyard/${'a'.repeat(100)}`)) {
+          return false; // Graveyard directory doesn't exist initially
+        }
+        return true; // Other paths exist
+      });
+
+      const storage = new PetStorage();
+      storage.moveToGraveyard(longNamePetState);
+
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        `/mock/home/.claude-pet/graveyard/${'a'.repeat(100)}/pet-state.json`,
+        expect.any(String),
+        'utf8'
+      );
+    });
+
+    it('should create backup and restore on atomic operation failure', () => {
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        if (path.toString().includes('/graveyard/Fluffy')) {
+          return false; // Graveyard directory doesn't exist initially
+        }
+        return true; // Other paths exist, including state file
+      });
+      vi.mocked(fs.writeFileSync).mockImplementationOnce(() => {
+        throw new Error('Write failed');
+      });
+
+      const storage = new PetStorage();
+      
+      expect(() => storage.moveToGraveyard(mockPetState)).toThrow('Graveyard operation failed');
+      expect(fs.copyFileSync).toHaveBeenCalledWith(
+        mockStateFile,
+        expect.stringMatching(/\.backup\.\d+$/)
+      );
+    });
+
+    it('should remove current state file after successful graveyard save', () => {
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        if (path.toString().includes('/graveyard/Fluffy') && !path.toString().includes('pet-state.json')) {
+          return false; // Graveyard directory doesn't exist initially
+        }
+        return true; // Other paths exist, including graveyard file after write
+      });
+
+      const storage = new PetStorage();
+      storage.moveToGraveyard(mockPetState);
+
+      expect(fs.unlinkSync).toHaveBeenCalledWith(mockStateFile);
+    });
+
+    it('should clean up backup file on successful operation', () => {
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        if (path.toString().includes('/graveyard/Fluffy') && !path.toString().includes('pet-state.json')) {
+          return false; // Graveyard directory doesn't exist initially
+        }
+        return true; // Other paths exist, including graveyard file after write
+      });
+
+      const storage = new PetStorage();
+      storage.moveToGraveyard(mockPetState);
+
+      expect(fs.unlinkSync).toHaveBeenCalledWith(expect.stringMatching(/\.backup\.\d+$/));
+    });
+
+    it('should handle filesystem permission errors gracefully', () => {
+      vi.mocked(fs.mkdirSync).mockImplementation(() => {
+        throw new Error('Permission denied');
+      });
+
+      const storage = new PetStorage();
+      
+      expect(() => storage.moveToGraveyard(mockPetState)).toThrow('Graveyard operation failed');
+    });
+
+    it('should verify graveyard file creation', () => {
+      let writeFileCalled = false;
+      vi.mocked(fs.writeFileSync).mockImplementation(() => {
+        writeFileCalled = true;
+      });
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        if (path.toString().includes('/graveyard/Fluffy') && !path.toString().includes('pet-state.json')) {
+          return false; // Graveyard directory doesn't exist initially
+        }
+        if (path.toString().includes('graveyard') && path.toString().includes('pet-state.json') && writeFileCalled) {
+          return true; // Graveyard file exists after write
+        }
+        return true; // Other paths exist
+      });
+
+      const storage = new PetStorage();
+      storage.moveToGraveyard(mockPetState);
+
+      expect(fs.existsSync).toHaveBeenCalledWith(
+        expect.stringContaining('graveyard/Fluffy/pet-state.json')
+      );
+    });
+
+    it('should throw error if graveyard file verification fails', () => {
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        if (path.toString().includes('/graveyard/Fluffy') && !path.toString().includes('pet-state.json')) {
+          return false; // Graveyard directory doesn't exist initially
+        }
+        if (path.toString().includes('graveyard') && path.toString().includes('pet-state.json')) {
+          return false; // Simulate verification failure - graveyard file doesn't exist after write
+        }
+        return true; // Other paths exist
+      });
+
+      const storage = new PetStorage();
+      
+      expect(() => storage.moveToGraveyard(mockPetState)).toThrow('Failed to verify graveyard file creation');
+    });
+  });
+
   describe('ensureDirectoryExists', () => {
     it('should create directory with recursive option', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);

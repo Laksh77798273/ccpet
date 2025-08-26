@@ -3,11 +3,14 @@ import { ResetCommand } from '../ResetCommand';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { PetStorage } from '../../services/PetStorage';
+import { IPetState } from '../../core/IPetState';
 
 // Mock fs module
 vi.mock('fs');
 vi.mock('path');
 vi.mock('os');
+vi.mock('../../services/PetStorage');
 
 describe('ResetCommand', () => {
   let resetCommand: ResetCommand;
@@ -16,12 +19,26 @@ describe('ResetCommand', () => {
   let mockFs: any;
   let mockPath: any;
   let mockOs: any;
+  let mockPetStorage: any;
+
+  const mockPetState: IPetState = {
+    energy: 100,
+    expression: "(^_^)",
+    animalType: "cat",
+    birthTime: new Date('2023-01-01'),
+    lastFeedTime: new Date('2023-01-01'),
+    totalTokensConsumed: 1000,
+    accumulatedTokens: 1000,
+    lastDecayTime: new Date('2023-01-01'),
+    petName: "Fluffy"
+  };
 
   beforeEach(() => {
     resetCommand = new ResetCommand();
     consoleSpy = {
       log: vi.spyOn(console, 'log').mockImplementation(() => {}),
-      error: vi.spyOn(console, 'error').mockImplementation(() => {})
+      error: vi.spyOn(console, 'error').mockImplementation(() => {}),
+      warn: vi.spyOn(console, 'warn').mockImplementation(() => {})
     };
     mockProcessExit = vi.spyOn(process, 'exit').mockImplementation(() => {
       throw new Error('process.exit called');
@@ -30,12 +47,17 @@ describe('ResetCommand', () => {
     mockFs = vi.mocked(fs);
     mockPath = vi.mocked(path);
     mockOs = vi.mocked(os);
+    mockPetStorage = vi.mocked(PetStorage);
 
     // Setup default mocks
     mockOs.homedir.mockReturnValue('/home/user');
     mockPath.join.mockImplementation((...args) => args.join('/'));
     mockFs.existsSync.mockReturnValue(false);
     mockFs.unlinkSync.mockImplementation(() => {});
+
+    // Setup PetStorage mock
+    mockPetStorage.prototype.loadState = vi.fn().mockReturnValue(mockPetState);
+    mockPetStorage.prototype.moveToGraveyard = vi.fn();
   });
 
   afterEach(() => {
@@ -62,18 +84,21 @@ describe('ResetCommand', () => {
     expect(mockFs.existsSync).toHaveBeenCalledWith('/home/user/.claude-pet/animation-counter.json');
     expect(mockFs.existsSync).toHaveBeenCalledWith('/home/user/.claude-pet/session-tracker.json');
 
-    // Should remove all files
-    expect(mockFs.unlinkSync).toHaveBeenCalledWith('/home/user/.claude-pet/pet-state.json');
+    // Should call PetStorage methods for pet-state.json
+    expect(mockPetStorage.prototype.loadState).toHaveBeenCalled();
+    expect(mockPetStorage.prototype.moveToGraveyard).toHaveBeenCalledWith(mockPetState);
+
+    // Should remove other files directly
     expect(mockFs.unlinkSync).toHaveBeenCalledWith('/home/user/.claude-pet/animation-counter.json');
     expect(mockFs.unlinkSync).toHaveBeenCalledWith('/home/user/.claude-pet/session-tracker.json');
 
-    // Should log removal messages
-    expect(consoleSpy.log).toHaveBeenCalledWith('🗑️  Removed pet-state.json');
+    // Should log graveyard and removal messages
+    expect(consoleSpy.log).toHaveBeenCalledWith('🪦 Moved pet "Fluffy" to graveyard');
     expect(consoleSpy.log).toHaveBeenCalledWith('🗑️  Removed animation-counter.json');
     expect(consoleSpy.log).toHaveBeenCalledWith('🗑️  Removed session-tracker.json');
 
     // Should log completion message
-    expect(consoleSpy.log).toHaveBeenCalledWith('✅ Pet reset complete! Removed 3 state file(s)');
+    expect(consoleSpy.log).toHaveBeenCalledWith('✅ Pet reset complete! Processed 3 file(s)');
     expect(consoleSpy.log).toHaveBeenCalledWith('🐣 Your pet will be reborn on next use');
   });
 
@@ -89,13 +114,64 @@ describe('ResetCommand', () => {
       // Should not exit on success
     }
 
-    // Should only remove the existing file
-    expect(mockFs.unlinkSync).toHaveBeenCalledWith('/home/user/.claude-pet/pet-state.json');
-    expect(mockFs.unlinkSync).toHaveBeenCalledTimes(1);
+    // Should call PetStorage methods for pet-state.json
+    expect(mockPetStorage.prototype.loadState).toHaveBeenCalled();
+    expect(mockPetStorage.prototype.moveToGraveyard).toHaveBeenCalledWith(mockPetState);
 
-    // Should log only one removal message
+    // Should not call unlinkSync for pet-state.json since it's handled by graveyard
+    expect(mockFs.unlinkSync).not.toHaveBeenCalledWith('/home/user/.claude-pet/pet-state.json');
+
+    // Should log graveyard message
+    expect(consoleSpy.log).toHaveBeenCalledWith('🪦 Moved pet "Fluffy" to graveyard');
+    expect(consoleSpy.log).toHaveBeenCalledWith('✅ Pet reset complete! Processed 1 file(s)');
+  });
+
+  it('should handle invalid pet state file', async () => {
+    // Mock pet-state.json exists but loadState returns null
+    mockFs.existsSync.mockImplementation((filepath) => {
+      return filepath.includes('pet-state.json');
+    });
+    mockPetStorage.prototype.loadState = vi.fn().mockReturnValue(null);
+
+    try {
+      await resetCommand.execute([]);
+    } catch (error) {
+      // Should not exit on success
+    }
+
+    // Should try to load state but fallback to direct deletion
+    expect(mockPetStorage.prototype.loadState).toHaveBeenCalled();
+    expect(mockPetStorage.prototype.moveToGraveyard).not.toHaveBeenCalled();
+    expect(mockFs.unlinkSync).toHaveBeenCalledWith('/home/user/.claude-pet/pet-state.json');
+
+    // Should log invalid file removal message
+    expect(consoleSpy.log).toHaveBeenCalledWith('🗑️  Removed invalid pet-state.json');
+    expect(consoleSpy.log).toHaveBeenCalledWith('✅ Pet reset complete! Processed 1 file(s)');
+  });
+
+  it('should handle graveyard save failure', async () => {
+    // Mock pet-state.json exists but graveyard save fails
+    mockFs.existsSync.mockImplementation((filepath) => {
+      return filepath.includes('pet-state.json');
+    });
+    mockPetStorage.prototype.moveToGraveyard = vi.fn().mockImplementation(() => {
+      throw new Error('Graveyard save failed');
+    });
+
+    try {
+      await resetCommand.execute([]);
+    } catch (error) {
+      // Should not exit on success
+    }
+
+    // Should try graveyard but fallback to direct deletion
+    expect(mockPetStorage.prototype.moveToGraveyard).toHaveBeenCalledWith(mockPetState);
+    expect(mockFs.unlinkSync).toHaveBeenCalledWith('/home/user/.claude-pet/pet-state.json');
+
+    // Should log warning and fallback message
+    expect(consoleSpy.warn).toHaveBeenCalledWith('⚠️  Failed to move to graveyard, removing file:', expect.any(Error));
     expect(consoleSpy.log).toHaveBeenCalledWith('🗑️  Removed pet-state.json');
-    expect(consoleSpy.log).toHaveBeenCalledWith('✅ Pet reset complete! Removed 1 state file(s)');
+    expect(consoleSpy.log).toHaveBeenCalledWith('✅ Pet reset complete! Processed 1 file(s)');
   });
 
   it('should handle when no files exist', async () => {
@@ -108,18 +184,21 @@ describe('ResetCommand', () => {
       // Should not exit on success
     }
 
-    // Should not remove any files
+    // Should not remove any files or call graveyard
     expect(mockFs.unlinkSync).not.toHaveBeenCalled();
+    expect(mockPetStorage.prototype.moveToGraveyard).not.toHaveBeenCalled();
 
     // Should log no files found message
     expect(consoleSpy.log).toHaveBeenCalledWith('ℹ️  No pet state files found to reset');
   });
 
   it('should handle filesystem errors gracefully', async () => {
-    // Mock file exists but unlinkSync throws error
+    // Mock file exists but unlinkSync throws error for non-pet files
     mockFs.existsSync.mockReturnValue(true);
-    mockFs.unlinkSync.mockImplementation(() => {
-      throw new Error('Permission denied');
+    mockFs.unlinkSync.mockImplementation((filepath) => {
+      if (filepath.includes('animation-counter.json')) {
+        throw new Error('Permission denied');
+      }
     });
 
     try {

@@ -63,6 +63,15 @@ vi.mock('fs');
 vi.mock('os');
 vi.mock('path');
 
+// Mock the config module to ensure predictable pet names
+vi.mock('../../core/config', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    generateRandomPetName: vi.fn()
+  };
+});
+
 
 describe('Pet Integration Tests', () => {
   const mockHomedir = '/mock/home';
@@ -227,6 +236,232 @@ describe('Pet Integration Tests', () => {
       
       expect(loadedState).toEqual(expect.objectContaining(state));
       expect(display).toMatch(/[🐱🐶🐰🐼🦊]\(\^_\^\) ●●●●●●●●●● 100\.00 \(3\) 💖3/);
+    });
+  });
+
+  describe('Pet Graveyard Integration', () => {
+    beforeEach(() => {
+      vi.mocked(fs.copyFileSync).mockReturnValue(undefined);
+      vi.mocked(fs.unlinkSync).mockReturnValue(undefined);
+    });
+
+    it('should complete full death-to-graveyard-to-new-pet lifecycle', async () => {
+      // Mock generateRandomPetName to return a different name
+      const { generateRandomPetName } = vi.mocked(await import('../../core/config'));
+      generateRandomPetName.mockReturnValue('Buddy');
+      
+      // Mock existsSync for graveyard operations
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        if (path.toString().includes('pet-state.json')) {
+          return true; // Graveyard file verification should pass
+        }
+        return false; // Graveyard directory doesn't exist initially
+      });
+
+      const storage = new PetStorage();
+      const deadPetState: IPetState = {
+        energy: 0,
+        expression: '(x_x)',
+        animalType: AnimalType.CAT,
+        birthTime: new Date('2024-01-01'),
+        lastFeedTime: new Date('2024-01-01'),
+        totalTokensConsumed: 5000000,
+        accumulatedTokens: 0,
+        totalLifetimeTokens: 5000000,
+        petName: 'Fluffy'
+      };
+
+      const pet = new Pet(deadPetState, { config: PET_CONFIG });
+
+      // Step 1: Verify pet is dead
+      expect(pet.isDead()).toBe(true);
+
+      // Step 2: Reset with graveyard callback
+      let graveyardState: IPetState | null = null;
+      pet.resetToInitialState((state) => {
+        graveyardState = state;
+        storage.moveToGraveyard(state);
+      });
+
+      // Step 3: Verify graveyard callback was called
+      expect(graveyardState).toEqual(expect.objectContaining({
+        energy: 0,
+        petName: 'Fluffy',
+        totalLifetimeTokens: 5000000
+      }));
+
+      // Step 4: Verify graveyard file operations
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        '/mock/home/.claude-pet/graveyard/Fluffy/pet-state.json',
+        expect.stringContaining('"petName": "Fluffy"'),
+        'utf8'
+      );
+
+      // Step 5: Verify new pet state
+      const newState = pet.getState();
+      expect(newState.energy).toBe(PET_CONFIG.INITIAL_ENERGY);
+      expect(newState.totalLifetimeTokens).toBe(0);
+      expect(newState.petName).not.toBe('Fluffy');
+      expect(pet.isDead()).toBe(false);
+    });
+
+    it('should handle concurrent pet deaths with unique graveyard directories', () => {
+      const storage = new PetStorage();
+      let existsCallCount = 0;
+      
+      // Mock same-name conflict resolution
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        if (path.toString().includes('/graveyard/Mittens')) {
+          existsCallCount++;
+          if (existsCallCount === 1) return true; // First check returns true (directory exists)
+          if (existsCallCount === 2) return false; // Second check returns false (can create numbered directory)
+        }
+        if (path.toString().includes('pet-state.json')) {
+          return true; // Graveyard file verification should pass
+        }
+        return false; // Default to false for other paths
+      });
+
+      const deadPet1: IPetState = {
+        ...createInitialState(),
+        energy: 0,
+        petName: 'Mittens',
+        totalLifetimeTokens: 1000000
+      };
+
+      storage.moveToGraveyard(deadPet1);
+
+      // Verify second pet gets numbered directory
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        expect.stringContaining('graveyard/Mittens-2/pet-state.json'),
+        expect.any(String),
+        'utf8'
+      );
+    });
+
+    it('should maintain data integrity during graveyard operations with filesystem errors', () => {
+      // Mock existsSync for backup creation and verification
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        if (path.toString().includes('backup')) return false; // No backup exists initially
+        if (path.toString().includes('pet-state.json')) return true; // State file exists for backup creation
+        return false;
+      });
+
+      const storage = new PetStorage();
+      const deadPetState: IPetState = {
+        ...createInitialState(),
+        energy: 0,
+        petName: 'ErrorPet',
+        totalLifetimeTokens: 2000000
+      };
+
+      // Simulate write failure to trigger rollback
+      vi.mocked(fs.writeFileSync).mockImplementationOnce(() => {
+        throw new Error('Disk full');
+      });
+
+      expect(() => storage.moveToGraveyard(deadPetState)).toThrow('Graveyard operation failed');
+      
+      // Verify backup and recovery were attempted
+      expect(fs.copyFileSync).toHaveBeenCalledWith(
+        mockStateFile,
+        expect.stringMatching(/\.backup\.\d+$/)
+      );
+    });
+
+    it('should handle complete CLI adoption workflow with graveyard preservation', () => {
+      // Setup: Dead pet in CLI
+      const deadPetState = {
+        energy: 0,
+        expression: '(x_x)',
+        animalType: AnimalType.DOG,
+        birthTime: '2024-01-01T00:00:00.000Z',
+        lastFeedTime: '2024-01-01T00:00:00.000Z',
+        totalTokensConsumed: 3000000,
+        accumulatedTokens: 0,
+        totalLifetimeTokens: 3000000,
+        petName: 'Rex'
+      };
+
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        if (path.toString().includes('graveyard') && path.toString().includes('pet-state.json')) {
+          return true; // Graveyard file verification should pass
+        }
+        if (path.toString().includes('pet-state.json')) {
+          return true; // State file exists
+        }
+        return false; // Graveyard directory doesn't exist initially
+      });
+      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(deadPetState));
+
+      const statusLine = createStatusLine();
+      
+      // Verify pet is dead
+      expect(statusLine.isPetDead()).toBe(true);
+
+      // Adopt new pet
+      statusLine.adoptNewPet();
+
+      // Verify graveyard operations
+      expect(fs.writeFileSync).toHaveBeenCalledWith(
+        '/mock/home/.claude-pet/graveyard/Rex/pet-state.json',
+        expect.stringContaining('"petName": "Rex"'),
+        'utf8'
+      );
+
+      // Verify current state file was removed and new one created
+      expect(fs.unlinkSync).toHaveBeenCalledWith(mockStateFile);
+      
+      // Verify new pet state was saved
+      const saveStateCalls = vi.mocked(fs.writeFileSync).mock.calls.filter(
+        call => call[0] === mockStateFile
+      );
+      expect(saveStateCalls.length).toBeGreaterThan(0);
+    });
+
+    it('should preserve complete pet history in graveyard format', () => {
+      // Mock existsSync for graveyard operations
+      vi.mocked(fs.existsSync).mockImplementation((path) => {
+        if (path.toString().includes('pet-state.json')) {
+          return true; // Graveyard file verification should pass
+        }
+        return false; // Graveyard directory doesn't exist initially
+      });
+
+      const storage = new PetStorage();
+      const richPetHistory: IPetState = {
+        energy: 0,
+        expression: '(x_x)',
+        animalType: AnimalType.PANDA,
+        birthTime: new Date('2024-01-01'),
+        lastFeedTime: new Date('2024-06-01'),
+        totalTokensConsumed: 10000000,
+        accumulatedTokens: 500000,
+        totalLifetimeTokens: 10000000,
+        lastDecayTime: new Date('2024-05-31'),
+        sessionTotalInputTokens: 5000,
+        sessionTotalOutputTokens: 3000,
+        sessionTotalCachedTokens: 1000,
+        contextLength: 50000,
+        contextPercentage: 25.0,
+        contextPercentageUsable: 31.25,
+        sessionTotalCostUsd: 2.45,
+        petName: 'Bamboo'
+      };
+
+      storage.moveToGraveyard(richPetHistory);
+
+      const savedJson = vi.mocked(fs.writeFileSync).mock.calls[0][1] as string;
+      const parsedHistory = JSON.parse(savedJson);
+
+      // Verify all state fields are preserved
+      expect(parsedHistory).toEqual(expect.objectContaining({
+        petName: 'Bamboo',
+        animalType: AnimalType.PANDA,
+        totalLifetimeTokens: 10000000,
+        sessionTotalCostUsd: 2.45,
+        contextPercentage: 25.0
+      }));
     });
   });
 });

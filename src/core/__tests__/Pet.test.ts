@@ -760,6 +760,72 @@ describe('Pet Core Logic', () => {
         expect(pet.isDead()).toBe(false);
         expect(pet.getCurrentEnergy()).toBe(PET_CONFIG.INITIAL_ENERGY);
       });
+
+      it('should call graveyard save callback when pet is dead', () => {
+        const initialState = { ...createInitialState(), energy: 0, petName: 'DeadPet' };
+        const pet = new Pet(initialState, mockDependencies);
+        const graveyardCallback = vi.fn();
+
+        expect(pet.isDead()).toBe(true);
+
+        pet.resetToInitialState(graveyardCallback);
+
+        expect(graveyardCallback).toHaveBeenCalledWith(
+          expect.objectContaining({
+            energy: 0,
+            petName: 'DeadPet'
+          })
+        );
+      });
+
+      it('should not call graveyard save callback when pet is alive', () => {
+        const initialState = { ...createInitialState(), energy: 50 };
+        const pet = new Pet(initialState, mockDependencies);
+        const graveyardCallback = vi.fn();
+
+        expect(pet.isDead()).toBe(false);
+
+        pet.resetToInitialState(graveyardCallback);
+
+        expect(graveyardCallback).not.toHaveBeenCalled();
+      });
+
+      it('should continue reset even if graveyard callback throws error', () => {
+        const initialState = { ...createInitialState(), energy: 0 };
+        const pet = new Pet(initialState, mockDependencies);
+        const graveyardCallback = vi.fn().mockImplementation(() => {
+          throw new Error('Graveyard save failed');
+        });
+
+        expect(pet.isDead()).toBe(true);
+
+        expect(() => pet.resetToInitialState(graveyardCallback)).not.toThrow();
+
+        // Pet should still be reset successfully
+        expect(pet.isDead()).toBe(false);
+        expect(pet.getCurrentEnergy()).toBe(PET_CONFIG.INITIAL_ENERGY);
+      });
+
+      it('should generate new random pet name after reset', () => {
+        const initialState = { ...createInitialState(), energy: 0, petName: 'OldPet' };
+        const pet = new Pet(initialState, mockDependencies);
+
+        pet.resetToInitialState();
+        const newState = pet.getState();
+
+        expect(newState.petName).not.toBe('OldPet');
+        expect(PET_NAMES).toContain(newState.petName);
+      });
+
+      it('should reset totalLifetimeTokens to 0', () => {
+        const initialState = { ...createInitialState(), totalLifetimeTokens: 5000000 };
+        const pet = new Pet(initialState, mockDependencies);
+
+        pet.resetToInitialState();
+        const state = pet.getState();
+
+        expect(state.totalLifetimeTokens).toBe(0);
+      });
     });
   });
 

@@ -90,6 +90,18 @@ ccpet config reset       # Reset to default configuration
 ccpet config path        # Show configuration file location
 ```
 
+#### Reset Command
+```bash
+ccpet reset              # Trigger pet death and graveyard preservation
+ccpet reset --help       # Show reset command help
+```
+Use `ccpet reset` to:
+- ✅ Manually trigger the pet death and preservation process
+- ✅ Save current pet to graveyard with complete history
+- ✅ Create a new pet with random name and fresh start
+- ✅ Test the graveyard functionality
+- ✅ **NEW:** Automatic history preservation in `~/.claude-pet/graveyard/`
+
 **Configuration Options:**
 ```bash
 # Colors (format: #RRGGBB or #RRGGBB:bright or #RRGGBB:bright:bold)
@@ -219,10 +231,44 @@ Total: 4615 Ctx(u): 88.5%
 
 ### 😴 When Your Pet Dies
 If your pet's energy reaches 0:
-- All statistics are reset (lifetime tokens, accumulated tokens)
-- Pet gets a new birth time when reborn
-- Your pet can be revived by continued Claude Code usage
-- Each new token helps rebuild your pet from scratch
+- **History Preserved**: Your pet's complete history is automatically saved to the graveyard
+- **New Pet Created**: A new pet with a random name and fresh start is born
+- **Legacy Protected**: All previous pet records are safely stored in `~/.claude-pet/graveyard/`
+- Each new token helps your new pet grow from the beginning
+
+### 🪦 Pet Graveyard & History Preservation
+ccpet automatically preserves your pet's legacy when they pass away:
+
+**Automatic History Saving:**
+- When a pet dies (energy = 0), their complete state is moved to `~/.claude-pet/graveyard/{petName}/`
+- Each pet gets their own dedicated folder with their final state preserved
+- Same-name pets are handled with sequential numbering (e.g., `Fluffy-2/`, `Fluffy-3/`)
+
+**Graveyard Structure:**
+```text
+~/.claude-pet/
+├── pet-state.json          # Current pet
+└── graveyard/
+    ├── Fluffy/
+    │   └── pet-state.json  # Complete final state
+    ├── Shadow/
+    │   └── pet-state.json  # Complete final state
+    ├── Luna-2/             # Same-name handling
+    │   └── pet-state.json
+    └── ...
+```
+
+**What's Preserved:**
+- ✅ Pet name and animal type
+- ✅ Final energy level and expression
+- ✅ Complete lifetime token statistics
+- ✅ Birth time and feeding history
+- ✅ All accumulated achievements
+
+**Atomic Operations:**
+- Safe file operations prevent data loss during transitions
+- Backup and rollback mechanisms ensure data integrity
+- Your pet history is never lost, even during system errors
 
 ## Troubleshooting
 
@@ -241,13 +287,21 @@ Pet state is stored in `~/.claude-pet/pet-state.json` with the following structu
 - `energy`: Current energy level (0-100)
 - `expression`: Current facial expression
 - `animalType`: Pet species (cat, dog, rabbit, panda, fox)
+- `petName`: Unique name for each pet (auto-generated)
 - `birthTime`: When the pet was born/reborn (ISO timestamp)
 - `lastFeedTime`: Last feeding timestamp
 - `totalTokensConsumed`: Total tokens consumed this lifecycle
 - `totalLifetimeTokens`: Lifetime token consumption
 - `accumulatedTokens`: Tokens waiting to convert to energy
+- `lastDecayTime`: Last energy decay calculation timestamp
+- Session metrics: `sessionTotalInputTokens`, `sessionTotalOutputTokens`, etc.
 
-The system automatically adds missing fields (like `birthTime`) for backward compatibility.
+**Graveyard Storage:**
+- Historical pets stored in `~/.claude-pet/graveyard/{petName}/pet-state.json`
+- Complete state preservation with all statistics and timestamps
+- Atomic file operations ensure no data loss during transitions
+
+The system automatically adds missing fields (like `birthTime` and `petName`) for backward compatibility.
 
 ### Pet Naming System
 ccpet features a **smart pet naming system** with cultural diversity:

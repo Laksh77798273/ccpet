@@ -463,7 +463,7 @@ describe('ClaudeCodeStatusLine', () => {
         
         expect(mockVscode.postMessage).toHaveBeenCalledWith({
           command: 'showInformationMessage',
-          text: 'Successfully adopted a new pet! Your pet is now happy and full of energy.'
+          text: expect.stringContaining('Successfully adopted a new pet named')
         });
         
         // Clean up global mock

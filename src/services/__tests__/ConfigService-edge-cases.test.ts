@@ -152,7 +152,11 @@ describe('ConfigService Edge Cases', () => {
       
       // Create a directory where the config file should be (after ensuring parent exists)
       if (fs.existsSync(configPath)) {
-        fs.rmSync(configPath, { recursive: true, force: true });
+        if (fs.statSync(configPath).isDirectory()) {
+          fs.rmSync(configPath, { recursive: true, force: true });
+        } else {
+          fs.unlinkSync(configPath);
+        }
       }
       fs.mkdirSync(configPath);
 

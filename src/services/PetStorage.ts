@@ -90,6 +90,27 @@ export class PetStorage {
     }
   }
 
+  public moveToGraveyard(currentState: IPetState): void {
+    try {
+      // Ensure graveyard directory exists
+      const graveyardDir = this._getGraveyardDir();
+      this.ensureDirectoryExists(graveyardDir);
+
+      // Create pet-specific directory with conflict resolution
+      const petGraveyardDir = this._createPetGraveyardDir(currentState.petName, graveyardDir);
+      
+      // Create graveyard state file path
+      const graveyardStatePath = path.join(petGraveyardDir, 'pet-state.json');
+
+      // Atomic operation: save to graveyard then clear current state
+      this._atomicMoveToGraveyard(currentState, graveyardStatePath);
+
+    } catch (error) {
+      console.error('Failed to move pet to graveyard:', error);
+      throw new Error(`Graveyard operation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
 
 
   private ensureDirectoryExists(dirPath: string): void {
@@ -99,6 +120,93 @@ export class PetStorage {
       }
     } catch (error) {
       console.error('Failed to create pet storage directory:', error);
+    }
+  }
+
+  private _getGraveyardDir(): string {
+    const homeDir = os.homedir();
+    const petDir = path.join(homeDir, '.claude-pet');
+    return path.join(petDir, 'graveyard');
+  }
+
+  private _createPetGraveyardDir(petName: string, graveyardDir: string): string {
+    // Sanitize pet name for safe directory naming
+    const safePetName = this._sanitizePetName(petName);
+    let petGraveyardDir = path.join(graveyardDir, safePetName);
+    let counter = 1;
+
+    // Handle naming conflicts with sequential numbering (with safety limit)
+    while (fs.existsSync(petGraveyardDir) && counter < 1000) {
+      counter++;
+      petGraveyardDir = path.join(graveyardDir, `${safePetName}-${counter}`);
+    }
+
+    // If we hit the limit, throw an error
+    if (counter >= 1000) {
+      throw new Error(`Too many pets with similar names. Cannot create unique graveyard directory for ${petName}`);
+    }
+
+    // Create the pet-specific graveyard directory
+    this.ensureDirectoryExists(petGraveyardDir);
+    return petGraveyardDir;
+  }
+
+  private _sanitizePetName(petName: string): string {
+    // Remove path traversal characters and unsafe file system characters
+    return petName
+      .replace(/[\/\\:*?"<>|]/g, '_') // Replace unsafe characters with underscore
+      .replace(/\.\./g, '_') // Replace path traversal attempts
+      .trim() // Remove leading/trailing whitespace
+      .substring(0, 100); // Limit length to prevent filesystem issues
+  }
+
+  private _atomicMoveToGraveyard(currentState: IPetState, graveyardStatePath: string): void {
+    let backupPath: string | null = null;
+    
+    try {
+      // Step 1: Create backup of current state if it exists
+      if (fs.existsSync(this.stateFilePath)) {
+        backupPath = `${this.stateFilePath}.backup.${Date.now()}`;
+        fs.copyFileSync(this.stateFilePath, backupPath);
+      }
+
+      // Step 2: Save current state to graveyard
+      const graveyardData = JSON.stringify(currentState, null, 2);
+      fs.writeFileSync(graveyardStatePath, graveyardData, 'utf8');
+
+      // Step 3: Verify graveyard file was written correctly
+      if (!fs.existsSync(graveyardStatePath)) {
+        throw new Error('Failed to verify graveyard file creation');
+      }
+
+      // Step 4: Remove current state file (pet has been moved to graveyard)
+      if (fs.existsSync(this.stateFilePath)) {
+        fs.unlinkSync(this.stateFilePath);
+      }
+
+      // Step 5: Clean up backup file on success
+      if (backupPath && fs.existsSync(backupPath)) {
+        fs.unlinkSync(backupPath);
+      }
+
+    } catch (error) {
+      // Rollback mechanism: restore from backup if it exists
+      this._recoverFromStorageFailure(backupPath, error);
+      throw error;
+    }
+  }
+
+  private _recoverFromStorageFailure(backupPath: string | null, originalError: unknown): void {
+    try {
+      if (backupPath && fs.existsSync(backupPath)) {
+        // Restore original state file from backup
+        fs.copyFileSync(backupPath, this.stateFilePath);
+        fs.unlinkSync(backupPath);
+        console.log('Successfully recovered pet state from backup after storage failure');
+      }
+    } catch (recoveryError) {
+      console.error('Failed to recover from storage failure:', recoveryError);
+      console.error('Original error:', originalError);
     }
   }
 }
