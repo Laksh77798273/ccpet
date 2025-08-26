@@ -118,7 +118,9 @@ class ClaudeCodeStatusLine {
       this.pet.applyTimeDecay();
       
       // Process tokens from JSONL transcript file
-      const tokenMetrics = await getTokenMetrics(claudeCodeInput.transcript_path);
+      // Check if this is a resumed conversation (total_cost_usd = 0 indicates resume)
+      const isResumedConversation = claudeCodeInput.cost.total_cost_usd === 0;
+      const tokenMetrics = await getTokenMetrics(claudeCodeInput.transcript_path, isResumedConversation);
       
       if (tokenMetrics.totalTokens > 0) {
         // Feed pet with actual tokens (using new accumulation system)

@@ -526,7 +526,28 @@ describe('ClaudeCodeStatusLine', () => {
       
       await statusLine.processTokensAndGetStatusDisplay(mockClaudeCodeInput);
       
-      expect(getTokenMetrics).toHaveBeenCalledWith('/mock/transcript.jsonl');
+      expect(getTokenMetrics).toHaveBeenCalledWith('/mock/transcript.jsonl', false);
+    });
+
+    it('should detect resumed conversations using total_cost_usd=0', async () => {
+      const { getTokenMetrics } = await import('../utils/jsonl');
+      
+      vi.mocked(fs.existsSync).mockReturnValue(false);
+      const statusLine = createStatusLine();
+      
+      // Create a mock input that indicates a resumed conversation
+      const resumedInput = {
+        ...mockClaudeCodeInput,
+        cost: {
+          ...mockClaudeCodeInput.cost,
+          total_cost_usd: 0 // This indicates a resumed conversation
+        }
+      };
+      
+      await statusLine.processTokensAndGetStatusDisplay(resumedInput);
+      
+      // Should be called with isResumedConversation=true
+      expect(getTokenMetrics).toHaveBeenCalledWith('/mock/transcript.jsonl', true);
     });
 
     it('should convert tokens to energy using correct ratio', async () => {

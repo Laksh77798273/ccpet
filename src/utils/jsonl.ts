@@ -75,8 +75,10 @@ function saveGlobalTracker(tracker: GlobalTracker): void {
 /**
  * Processes a JSONL transcript file to extract INCREMENTAL token metrics
  * Only processes new messages since last run based on global timestamp
+ * @param transcriptPath Path to the JSONL transcript file
+ * @param isResumedConversation Whether this is a resumed conversation (total_cost_usd = 0)
  */
-export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetrics> {
+export async function getTokenMetrics(transcriptPath: string, isResumedConversation: boolean = false): Promise<TokenMetrics> {
   let inputTokens = 0;
   let outputTokens = 0;
   let cachedTokens = 0;
@@ -103,6 +105,10 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
     // Load global tracker to find last processed timestamp
     const tracker = loadGlobalTracker();
     const lastGlobalTimestamp = tracker ? new Date(tracker.lastProcessedTimestamp).getTime() : 0;
+    
+    // If this is a resumed conversation, don't process any tokens for feeding
+    // but still calculate session totals and context length
+    const shouldProcessTokensForFeeding = !isResumedConversation;
     
     // Read and parse all messages
     const fileStream = fs.createReadStream(transcriptPath);
@@ -173,6 +179,11 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
     for (const message of messages) {
       const usage = message.usage || (message.message && message.message.usage);
 
+      // For resumed conversations, don't process any tokens for feeding
+      if (!shouldProcessTokensForFeeding) {
+        continue;
+      }
+
       // Skip messages that are older than or equal to last processed timestamp
       if (message.timestamp && lastGlobalTimestamp > 0) {
         const messageTimestamp = new Date(message.timestamp).getTime();
@@ -198,8 +209,8 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
       }
     }
 
-    // Save updated global tracker - only if we have a newer timestamp
-    if (lastProcessedTimestamp) {
+    // Save updated global tracker - only if we have a newer timestamp and not a resumed conversation
+    if (lastProcessedTimestamp && shouldProcessTokensForFeeding) {
       const newTimestamp = new Date(lastProcessedTimestamp).getTime();
       const currentTimestamp = tracker ? new Date(tracker.lastProcessedTimestamp).getTime() : 0;
       
