@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { StatusBarFormatter } from '../StatusBar';
 import { IPetState } from '../../core/Pet';
+import { ConfigService } from '../../services/ConfigService';
 
 describe('StatusBarFormatter Component', () => {
   const createMockPetState = (overrides: Partial<IPetState> = {}): IPetState => ({
@@ -10,18 +11,33 @@ describe('StatusBarFormatter Component', () => {
     totalTokensConsumed: 5,
     accumulatedTokens: 0,
     totalLifetimeTokens: 5,
+    petName: 'TestPet',
     ...overrides
   });
 
+  const createMockConfigService = () => {
+    const mockConfigService = {
+      getConfig: vi.fn().mockReturnValue({
+        display: {
+          maxLines: 1,
+          line1: { enabled: true, items: ['expression', 'energy-bar', 'energy-value', 'accumulated-tokens', 'lifetime-tokens'] }
+        }
+      })
+    } as unknown as ConfigService;
+    return mockConfigService;
+  };
+
   describe('constructor and initialization', () => {
     it('should initialize without dependencies', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
       
       expect(formatter).toBeInstanceOf(StatusBarFormatter);
     });
 
     it('should initialize with test mode', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
       
       expect(formatter).toBeInstanceOf(StatusBarFormatter);
     });
@@ -30,7 +46,15 @@ describe('StatusBarFormatter Component', () => {
 
   describe('formatPetDisplay', () => {
     it('should format pet display with expression, energy bar, value and tokens', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      mockConfigService.getConfig = vi.fn().mockReturnValue({
+        display: {
+          maxLines: 1,
+          line1: { enabled: true, items: ['expression', 'energy-bar', 'energy-value', 'accumulated-tokens', 'lifetime-tokens'] }
+        }
+      });
+      const formatter = new StatusBarFormatter(true, mockConfigService);
+      
       const testState = createMockPetState({
         expression: '(o_o)',
         energy: 50.25,
@@ -44,7 +68,8 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should handle formatting errors gracefully', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
       
       const result = formatter.formatPetDisplay(null as any);
 
@@ -52,7 +77,16 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should include session token info with colored formatting when available', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      mockConfigService.getConfig = vi.fn().mockReturnValue({
+        display: {
+          maxLines: 2,
+          line1: { enabled: true, items: ['expression', 'energy-bar', 'energy-value', 'accumulated-tokens', 'lifetime-tokens'] },
+          line2: { enabled: true, items: ['input', 'output', 'cached', 'total'] }
+        }
+      });
+      const formatter = new StatusBarFormatter(true, mockConfigService);
+      
       const testState = createMockPetState({
         expression: '(^_^)',
         energy: 75,
@@ -69,7 +103,15 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should not include session token info when not available', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      mockConfigService.getConfig = vi.fn().mockReturnValue({
+        display: {
+          maxLines: 1,
+          line1: { enabled: true, items: ['expression', 'energy-bar', 'energy-value', 'accumulated-tokens', 'lifetime-tokens'] }
+        }
+      });
+      const formatter = new StatusBarFormatter(true, mockConfigService);
+      
       const testState = createMockPetState({
         expression: '(^_^)',
         energy: 75,
@@ -83,16 +125,16 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should include context metrics when available and configured', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
       // Mock the ConfigService to enable line3 with context metrics
-      const configService = (formatter as any).configService;
-      configService.getConfig = vi.fn().mockReturnValue({
+      mockConfigService.getConfig = vi.fn().mockReturnValue({
         display: {
           maxLines: 3,
           line2: { enabled: true, items: ['input', 'output', 'cached', 'total'] },
           line3: { enabled: true, items: ['context-length', 'context-percentage', 'context-percentage-usable'] }
         }
       });
+      const formatter = new StatusBarFormatter(true, mockConfigService);
       
       const testState = createMockPetState({
         expression: '(^_^)',
@@ -113,10 +155,9 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should display context percentages when value is 0', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
       // Mock the ConfigService to enable line3 with context metrics
-      const configService = (formatter as any).configService;
-      configService.getConfig = vi.fn().mockReturnValue({
+      mockConfigService.getConfig = vi.fn().mockReturnValue({
         display: {
           maxLines: 3,
           line1: { enabled: true, items: ['expression', 'energy-bar', 'energy-value', 'accumulated-tokens', 'lifetime-tokens'] },
@@ -124,6 +165,7 @@ describe('StatusBarFormatter Component', () => {
           line3: { enabled: true, items: ['context-length', 'context-percentage', 'context-percentage-usable'] }
         }
       });
+      const formatter = new StatusBarFormatter(true, mockConfigService);
       
       const testState = createMockPetState({
         expression: '(^_^)',
@@ -144,14 +186,14 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should format line1 with custom configuration', () => {
-      const formatter = new StatusBarFormatter(true);
-      const configService = (formatter as any).configService;
-      configService.getConfig = vi.fn().mockReturnValue({
+      const mockConfigService = createMockConfigService();
+      mockConfigService.getConfig = vi.fn().mockReturnValue({
         display: {
           maxLines: 1,
           line1: { enabled: true, items: ['expression', 'energy-value'] }
         }
       });
+      const formatter = new StatusBarFormatter(true, mockConfigService);
 
       const testState = createMockPetState({
         expression: '(^_^)',
@@ -166,14 +208,14 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should fallback to default line1 format when no valid items configured', () => {
-      const formatter = new StatusBarFormatter(true);
-      const configService = (formatter as any).configService;
-      configService.getConfig = vi.fn().mockReturnValue({
+      const mockConfigService = createMockConfigService();
+      mockConfigService.getConfig = vi.fn().mockReturnValue({
         display: {
           maxLines: 1,
           line1: { enabled: true, items: ['invalid-item'] }
         }
       });
+      const formatter = new StatusBarFormatter(true, mockConfigService);
 
       const testState = createMockPetState({
         expression: '(^_^)',
@@ -189,14 +231,14 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should support pet-name placeholder in line1', () => {
-      const formatter = new StatusBarFormatter(true);
-      const configService = (formatter as any).configService;
-      configService.getConfig = vi.fn().mockReturnValue({
+      const mockConfigService = createMockConfigService();
+      mockConfigService.getConfig = vi.fn().mockReturnValue({
         display: {
           maxLines: 1,
           line1: { enabled: true, items: ['pet-name', 'expression'] }
         }
       });
+      const formatter = new StatusBarFormatter(true, mockConfigService);
 
       const testState = createMockPetState({
         expression: '(^_^)',
@@ -207,18 +249,18 @@ describe('StatusBarFormatter Component', () => {
 
       const result = formatter.formatPetDisplay(testState);
 
-      expect(result).toBe('Pet (^_^)');
+      expect(result).toBe('TestPet (^_^)');
     });
 
     it('should maintain backward compatibility when line1 is not configured', () => {
-      const formatter = new StatusBarFormatter(true);
-      const configService = (formatter as any).configService;
-      configService.getConfig = vi.fn().mockReturnValue({
+      const mockConfigService = createMockConfigService();
+      mockConfigService.getConfig = vi.fn().mockReturnValue({
         display: {
           maxLines: 1
           // No line1 configuration - should fall back to old behavior
         }
       });
+      const formatter = new StatusBarFormatter(true, mockConfigService);
 
       const testState = createMockPetState({
         expression: '(^_^)',
@@ -234,15 +276,15 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should handle line1 disabled', () => {
-      const formatter = new StatusBarFormatter(true);
-      const configService = (formatter as any).configService;
-      configService.getConfig = vi.fn().mockReturnValue({
+      const mockConfigService = createMockConfigService();
+      mockConfigService.getConfig = vi.fn().mockReturnValue({
         display: {
           maxLines: 2,
           line1: { enabled: false, items: ['expression', 'energy-bar'] },
           line2: { enabled: true, items: ['input', 'output'] }
         }
       });
+      const formatter = new StatusBarFormatter(true, mockConfigService);
 
       const testState = createMockPetState({
         expression: '(^_^)',
@@ -262,7 +304,8 @@ describe('StatusBarFormatter Component', () => {
 
   describe('generateEnergyBar', () => {
     it('should generate full energy bar for 100% energy', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
 
       const result = formatter.generateEnergyBar(100);
 
@@ -271,7 +314,8 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should generate half energy bar for 50% energy', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
 
       const result = formatter.generateEnergyBar(50);
 
@@ -280,7 +324,8 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should generate empty energy bar for 0% energy', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
 
       const result = formatter.generateEnergyBar(0);
 
@@ -289,7 +334,8 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should handle 75% energy correctly', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
 
       const result = formatter.generateEnergyBar(75);
 
@@ -298,7 +344,8 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should handle 25% energy correctly', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
 
       const result = formatter.generateEnergyBar(25);
 
@@ -307,7 +354,8 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should handle edge case of 1% energy', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
 
       const result = formatter.generateEnergyBar(1);
 
@@ -316,7 +364,8 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should handle edge case of 99% energy', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
 
       const result = formatter.generateEnergyBar(99);
 
@@ -325,7 +374,8 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should handle invalid energy values gracefully', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
 
       const result = formatter.generateEnergyBar(NaN);
 
@@ -333,7 +383,8 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should handle negative energy values', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
 
       const result = formatter.generateEnergyBar(-10);
 
@@ -341,7 +392,8 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should handle energy values over 100', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
 
       const result = formatter.generateEnergyBar(150);
 
@@ -349,7 +401,8 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should handle generateEnergyBar errors gracefully', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
 
       // Mock Math.round to throw an error to trigger catch block
       const originalMathRound = Math.round;
@@ -368,14 +421,16 @@ describe('StatusBarFormatter Component', () => {
 
   describe('formatTokenCount', () => {
     it('should format small numbers as is', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
       
       expect(formatter.formatTokenCount(42)).toBe('42');
       expect(formatter.formatTokenCount(999)).toBe('999');
     });
 
     it('should format thousands with K suffix', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
       
       expect(formatter.formatTokenCount(1500)).toBe('1.5K');
       expect(formatter.formatTokenCount(10000)).toBe('10.0K');
@@ -383,7 +438,8 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should format millions with M suffix', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
       
       expect(formatter.formatTokenCount(1000000)).toBe('1.00M');
       expect(formatter.formatTokenCount(1500000)).toBe('1.50M');
@@ -391,7 +447,8 @@ describe('StatusBarFormatter Component', () => {
     });
 
     it('should handle formatting errors gracefully', () => {
-      const formatter = new StatusBarFormatter(true);
+      const mockConfigService = createMockConfigService();
+      const formatter = new StatusBarFormatter(true, mockConfigService);
       
       const result = formatter.formatTokenCount(NaN);
       

@@ -26,6 +26,7 @@ export interface ClaudeCodeMessage {
   sessionId?: string;
   uuid?: string;
   timestamp?: string;
+  isSidechain?: boolean;
   usage?: {
     input_tokens: number;
     output_tokens: number;
@@ -151,8 +152,13 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
     let startProcessing = tracker ? false : true; // If no tracker, process from beginning
     
 
-    // Process messages incrementally
-    for (const message of messages) {
+    // Find the most recent main chain message for context length calculation
+    let mostRecentMainChainEntry: ClaudeCodeMessage | null = null;
+    let mostRecentTimestamp = 0;
+    let mostRecentIndex = -1;
+
+    for (let i = 0; i < messages.length; i++) {
+      const message = messages[i];
       const usage = message.usage || (message.message && message.message.usage);
       
       // Always count session totals
@@ -160,13 +166,40 @@ export async function getTokenMetrics(transcriptPath: string): Promise<TokenMetr
         sessionTotalInputTokens += usage.input_tokens || 0;
         sessionTotalOutputTokens += usage.output_tokens || 0;
         sessionTotalCachedTokens += (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0);
-        
-        // Update context length from the most recent message (last processed)
-        // Context length = input tokens + cached tokens for current context
-        contextLength = (usage.input_tokens || 0) + 
-                       (usage.cache_read_input_tokens || 0) + 
-                       (usage.cache_creation_input_tokens || 0);
       }
+
+      // Track the most recent entry with isSidechain: false (or undefined, which defaults to main chain)
+      if (message.isSidechain !== true && usage) {
+        if (message.timestamp) {
+          const entryTime = new Date(message.timestamp).getTime();
+          if (!mostRecentTimestamp || entryTime > mostRecentTimestamp) {
+            mostRecentTimestamp = entryTime;
+            mostRecentMainChainEntry = message;
+            mostRecentIndex = i;
+          }
+        } else {
+          // If no timestamp, use message order (last message wins)
+          if (i > mostRecentIndex) {
+            mostRecentMainChainEntry = message;
+            mostRecentIndex = i;
+          }
+        }
+      }
+    }
+
+    // Calculate context length from the most recent main chain message
+    if (mostRecentMainChainEntry) {
+      const usage = mostRecentMainChainEntry.usage || (mostRecentMainChainEntry.message && mostRecentMainChainEntry.message.usage);
+      if (usage) {
+        contextLength = (usage.input_tokens || 0)
+          + (usage.cache_read_input_tokens || 0)
+          + (usage.cache_creation_input_tokens || 0);
+      }
+    }
+
+    // Process messages incrementally
+    for (const message of messages) {
+      const usage = message.usage || (message.message && message.message.usage);
 
       // If we have a tracker, skip until we find the last processed message
       if (tracker && !startProcessing) {

@@ -1,5 +1,5 @@
 import { IPetState } from '../core/Pet';
-import { PET_CONFIG, validateLine1Items, Line1ItemType } from '../core/config';
+import { PET_CONFIG, validateLine1Items, Line1ItemType, getProcessedColors } from '../core/config';
 import { ConfigService } from '../services/ConfigService';
 
 export class StatusBarFormatter {
@@ -9,6 +9,10 @@ export class StatusBarFormatter {
   constructor(testMode: boolean = false, configService?: ConfigService) {
     this.testMode = testMode;
     this.configService = configService || new ConfigService();
+  }
+
+  private getColors() {
+    return this.testMode ? PET_CONFIG.COLORS : getProcessedColors(this.configService);
   }
 
   public formatPetDisplay(state: IPetState, animatedExpression?: string): string {
@@ -58,9 +62,12 @@ export class StatusBarFormatter {
     const lifetimeTokensDisplay = this.formatTokenCount(state.totalLifetimeTokens);
     const displayExpression = animatedExpression || state.expression;
     
-    return this.testMode ? 
-      `${displayExpression} ${energyBar} ${energyValue} (${tokensDisplay}) 💖${lifetimeTokensDisplay}` :
-      `${PET_CONFIG.COLORS.PET_EXPRESSION}${displayExpression}${PET_CONFIG.COLORS.RESET} ${PET_CONFIG.COLORS.ENERGY_BAR}${energyBar}${PET_CONFIG.COLORS.RESET} ${PET_CONFIG.COLORS.ENERGY_VALUE}${energyValue}${PET_CONFIG.COLORS.RESET} ${PET_CONFIG.COLORS.ACCUMULATED_TOKENS}(${tokensDisplay})${PET_CONFIG.COLORS.RESET} ${PET_CONFIG.COLORS.LIFETIME_TOKENS}💖${lifetimeTokensDisplay}${PET_CONFIG.COLORS.RESET}`;
+    if (this.testMode) {
+      return `${displayExpression} ${energyBar} ${energyValue} (${tokensDisplay}) 💖${lifetimeTokensDisplay}`;
+    } else {
+      const colors = this.getColors();
+      return `${colors.PET_EXPRESSION}${displayExpression}${colors.RESET} ${colors.ENERGY_BAR}${energyBar}${colors.RESET} ${colors.ENERGY_VALUE}${energyValue}${colors.RESET} ${colors.ACCUMULATED_TOKENS}(${tokensDisplay})${colors.RESET} ${colors.LIFETIME_TOKENS}💖${lifetimeTokensDisplay}${colors.RESET}`;
+    }
   }
 
   private formatConfigurablePetLine(items: string[], state: IPetState, animatedExpression?: string): string {
@@ -81,7 +88,8 @@ export class StatusBarFormatter {
           if (this.testMode) {
             parts.push(data.value);
           } else {
-            parts.push(`${data.color}${data.value}${PET_CONFIG.COLORS.RESET}`);
+            const colors = this.getColors();
+            parts.push(`${data.color}${data.value}${colors.RESET}`);
           }
         } else {
           console.warn(`Line1 data not available for item: ${item}`);
@@ -101,56 +109,58 @@ export class StatusBarFormatter {
     const energyValue = state.energy.toFixed(2);
     const tokensDisplay = this.formatTokenCount(state.accumulatedTokens);
     const lifetimeTokensDisplay = this.formatTokenCount(state.totalLifetimeTokens);
+    const colors = this.getColors();
 
     return {
       'expression': {
         value: displayExpression,
-        color: PET_CONFIG.COLORS.PET_EXPRESSION
+        color: colors.PET_EXPRESSION
       },
       'energy-bar': {
         value: energyBar,
-        color: PET_CONFIG.COLORS.ENERGY_BAR
+        color: colors.ENERGY_BAR
       },
       'energy-value': {
         value: energyValue,
-        color: PET_CONFIG.COLORS.ENERGY_VALUE
+        color: colors.ENERGY_VALUE
       },
       'accumulated-tokens': {
         value: `(${tokensDisplay})`,
-        color: PET_CONFIG.COLORS.ACCUMULATED_TOKENS
+        color: colors.ACCUMULATED_TOKENS
       },
       'lifetime-tokens': {
         value: `💖${lifetimeTokensDisplay}`,
-        color: PET_CONFIG.COLORS.LIFETIME_TOKENS
+        color: colors.LIFETIME_TOKENS
       },
       'pet-name': {
-        value: 'Pet', // Placeholder for Story 4.2
-        color: PET_CONFIG.COLORS.PET_EXPRESSION
+        value: state.petName || 'Pet',
+        color: colors.PET_EXPRESSION
       }
     };
   }
 
   private getSessionData(state: IPetState): Record<string, { value: string; color: string }> {
     const sessionData: Record<string, { value: string; color: string }> = {};
+    const colors = this.getColors();
     
     if (state.sessionTotalInputTokens !== undefined) {
       sessionData.input = {
         value: this.formatTokenCount(state.sessionTotalInputTokens),
-        color: PET_CONFIG.COLORS.SESSION_INPUT
+        color: colors.SESSION_INPUT
       };
     }
     
     if (state.sessionTotalOutputTokens !== undefined) {
       sessionData.output = {
         value: this.formatTokenCount(state.sessionTotalOutputTokens),
-        color: PET_CONFIG.COLORS.SESSION_OUTPUT
+        color: colors.SESSION_OUTPUT
       };
     }
     
     if (state.sessionTotalCachedTokens !== undefined) {
       sessionData.cached = {
         value: this.formatTokenCount(state.sessionTotalCachedTokens),
-        color: PET_CONFIG.COLORS.SESSION_CACHED
+        color: colors.SESSION_CACHED
       };
     }
     
@@ -160,7 +170,7 @@ export class StatusBarFormatter {
       const total = state.sessionTotalInputTokens + state.sessionTotalOutputTokens + state.sessionTotalCachedTokens;
       sessionData.total = {
         value: this.formatTokenCount(total),
-        color: PET_CONFIG.COLORS.SESSION_TOTAL
+        color: colors.SESSION_TOTAL
       };
     }
     
@@ -168,7 +178,7 @@ export class StatusBarFormatter {
     if (state.sessionTotalCostUsd !== undefined) {
       sessionData['cost'] = {
         value: `$${state.sessionTotalCostUsd.toFixed(2)}`,
-        color: PET_CONFIG.COLORS.COST
+        color: colors.COST
       };
     }
     
@@ -176,21 +186,21 @@ export class StatusBarFormatter {
     if (state.contextLength !== undefined) {
       sessionData['context-length'] = {
         value: this.formatTokenCount(state.contextLength),
-        color: PET_CONFIG.COLORS.CONTEXT_LENGTH
+        color: colors.CONTEXT_LENGTH
       };
     }
     
     if (state.contextPercentage !== undefined) {
       sessionData['context-percentage'] = {
         value: !isNaN(state.contextPercentage) ? `${state.contextPercentage.toFixed(1)}%` : '0.0%',
-        color: PET_CONFIG.COLORS.CONTEXT_PERCENTAGE
+        color: colors.CONTEXT_PERCENTAGE
       };
     }
     
     if (state.contextPercentageUsable !== undefined) {
       sessionData['context-percentage-usable'] = {
         value: !isNaN(state.contextPercentageUsable) ? `${state.contextPercentageUsable.toFixed(1)}%` : '0.0%',
-        color: PET_CONFIG.COLORS.CONTEXT_PERCENTAGE_USABLE
+        color: colors.CONTEXT_PERCENTAGE_USABLE
       };
     }
     
@@ -221,7 +231,8 @@ export class StatusBarFormatter {
         if (this.testMode) {
           parts.push(`${label}: ${data.value}`);
         } else {
-          parts.push(`${data.color}${label}: ${data.value}${PET_CONFIG.COLORS.RESET}`);
+          const colors = this.getColors();
+          parts.push(`${data.color}${label}: ${data.value}${colors.RESET}`);
         }
       }
     }

@@ -36,10 +36,10 @@ export const LINE1_SUPPORTED_ITEMS: readonly Line1ItemType[] = [
   'pet-name'
 ] as const;
 
-function getColorConfiguration() {
+function getColorConfiguration(configService?: ConfigService) {
   try {
-    const configService = new ConfigService();
-    const userConfig = configService.getConfig();
+    const service = configService || new ConfigService();
+    const userConfig = service.getConfig();
     
     return {
       PET_EXPRESSION: userConfig.colors.petExpression || '#FFFF00:bright:bold',
@@ -76,6 +76,25 @@ function getColorConfiguration() {
       RESET: 'RESET'
     };
   }
+}
+
+function getDefaultColorConfiguration() {
+  return {
+    PET_EXPRESSION: '#FFFF00:bright:bold',
+    ENERGY_BAR: '#00FF00',
+    ENERGY_VALUE: '#00FFFF',
+    ACCUMULATED_TOKENS: '#778899',
+    LIFETIME_TOKENS: '#FF00FF',
+    SESSION_INPUT: '#00FF00',
+    SESSION_OUTPUT: '#FFFF00',
+    SESSION_CACHED: '#F4A460',
+    SESSION_TOTAL: '#FFFFFF',
+    CONTEXT_LENGTH: '#00DDFF',
+    CONTEXT_PERCENTAGE: '#0099DD',
+    CONTEXT_PERCENTAGE_USABLE: '#90EE90',
+    COST: '#FFD700',
+    RESET: 'RESET'
+  };
 }
 
 // 宠物名称列表
@@ -144,13 +163,18 @@ export const PET_CONFIG = {
   ANIMAL: {
     DEFAULT_TYPE: AnimalType.CAT // 默认动物类型用于向后兼容
   },
-  // Processed colors - automatically converted from hex to ANSI escape codes
-  COLORS: processColorConfig(getColorConfiguration() as Record<string, string>)
+  // Processed colors - using defaults initially, will be updated by getProcessedColors()
+  COLORS: processColorConfig(getDefaultColorConfiguration() as Record<string, string>)
 } as const;
 
 export const LOGGER_CONFIG = {
   COMPONENT_NAME: 'StatusPetExtension'
 } as const;
+
+// 动态获取处理过的颜色配置（用于运行时获取用户配置的颜色）
+export function getProcessedColors(configService?: ConfigService) {
+  return processColorConfig(getColorConfiguration(configService) as Record<string, string>);
+}
 
 // 默认line1配置
 export const DEFAULT_LINE1_CONFIG = {

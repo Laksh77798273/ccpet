@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('config.ts', () => {
   afterEach(() => {
@@ -7,35 +7,35 @@ describe('config.ts', () => {
     vi.resetModules();
   });
 
-  it('should use ConfigService colors when available', async () => {
-    // Mock ConfigService to work normally
-    vi.doMock('../../services/ConfigService', () => ({
-      ConfigService: vi.fn().mockImplementation(() => ({
-        getConfig: () => ({
-          colors: {
-            petExpression: '#FF0000:bright:bold',
-            energyBar: '#0000FF',
-            energyValue: '#00FF00',
-            accumulatedTokens: '#FFFF00',
-            lifetimeTokens: '#FF00FF',
-            sessionInput: '#00FFFF',
-            sessionOutput: '#FF8000',
-            sessionCached: '#800080',
-            sessionTotal: '#808080'
-          }
-        })
-      }))
-    }));
+  it('should use ConfigService colors when available with getProcessedColors', async () => {
+    // Mock ConfigService to return specific colors
+    const mockConfigService = {
+      getConfig: vi.fn().mockReturnValue({
+        colors: {
+          petExpression: '#FF0000:bright:bold',
+          energyBar: '#0000FF',
+          energyValue: '#00FF00',
+          accumulatedTokens: '#FFFF00',
+          lifetimeTokens: '#FF00FF',
+          sessionInput: '#00FFFF',
+          sessionOutput: '#FF8000',
+          sessionCached: '#800080',
+          sessionTotal: '#808080'
+        }
+      })
+    };
 
-    const { PET_CONFIG } = await import('../config');
+    // Import config and use getProcessedColors
+    const { getProcessedColors } = await import('../config');
+    const colors = getProcessedColors(mockConfigService as any);
 
     // Colors are processed into ANSI escape sequences, could be RGB or 256-color
-    expect(PET_CONFIG.COLORS.PET_EXPRESSION).toMatch(/\u001b\[1m\u001b\[38;(2;255;0;0|5;9)m/);
-    expect(PET_CONFIG.COLORS.ENERGY_BAR).toMatch(/\u001b\[38;(2;0;0;255|5;12)m/);
-    expect(PET_CONFIG.COLORS.ENERGY_VALUE).toMatch(/\u001b\[38;(2;0;255;0|5;10)m/);
-    expect(PET_CONFIG.COLORS.ACCUMULATED_TOKENS).toMatch(/\u001b\[38;(2;255;255;0|5;11)m/);
-    expect(PET_CONFIG.COLORS.LIFETIME_TOKENS).toMatch(/\u001b\[38;(2;255;0;255|5;13)m/);
-    expect(PET_CONFIG.COLORS.RESET).toBe('\u001b[0m');
+    expect(colors.PET_EXPRESSION).toMatch(/\u001b\[1m\u001b\[38;(2;255;0;0|5;9)m/);
+    expect(colors.ENERGY_BAR).toMatch(/\u001b\[38;(2;0;0;255|5;12)m/);
+    expect(colors.ENERGY_VALUE).toMatch(/\u001b\[38;(2;0;255;0|5;10)m/);
+    expect(colors.ACCUMULATED_TOKENS).toMatch(/\u001b\[38;(2;255;255;0|5;11)m/);
+    expect(colors.LIFETIME_TOKENS).toMatch(/\u001b\[38;(2;255;0;255|5;13)m/);
+    expect(colors.RESET).toBe('\u001b[0m');
   });
 
   it('should use fallback colors when ConfigService constructor throws error', async () => {
@@ -79,23 +79,22 @@ describe('config.ts', () => {
 
   it('should handle missing color properties with defaults', async () => {
     // Mock ConfigService with incomplete config
-    vi.doMock('../../services/ConfigService', () => ({
-      ConfigService: vi.fn().mockImplementation(() => ({
-        getConfig: () => ({
-          colors: {
-            petExpression: '#FF0000',
-            // Missing other properties will use the || fallbacks
-          }
-        })
-      }))
-    }));
+    const mockConfigService = {
+      getConfig: vi.fn().mockReturnValue({
+        colors: {
+          petExpression: '#FF0000',
+          // Missing other properties will use the || fallbacks
+        }
+      })
+    };
 
-    const { PET_CONFIG } = await import('../config');
+    const { getProcessedColors } = await import('../config');
+    const colors = getProcessedColors(mockConfigService as any);
 
-    expect(PET_CONFIG.COLORS.PET_EXPRESSION).toMatch(/\u001b\[38;(2;255;0;0|5;9)m/);
+    expect(colors.PET_EXPRESSION).toMatch(/\u001b\[38;(2;255;0;0|5;9)m/);
     // Should use fallback for missing properties (the || defaults in the code)
-    expect(PET_CONFIG.COLORS.ENERGY_BAR).toMatch(/\u001b\[38;(2;0;255;0|5;10)m/);
-    expect(PET_CONFIG.COLORS.ENERGY_VALUE).toMatch(/\u001b\[38;(2;0;255;255|5;14)m/);
+    expect(colors.ENERGY_BAR).toMatch(/\u001b\[38;(2;0;255;0|5;10)m/);
+    expect(colors.ENERGY_VALUE).toMatch(/\u001b\[38;(2;0;255;255|5;14)m/);
   });
 
   it('should export PET_CONFIG with correct structure', async () => {
