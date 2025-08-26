@@ -22,6 +22,7 @@ describe('ResetCommand', () => {
   let mockPetStorage: any;
 
   const mockPetState: IPetState = {
+    uuid: 'test-uuid-reset',
     energy: 100,
     expression: "(^_^)",
     animalType: "cat",

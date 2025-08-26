@@ -4,6 +4,7 @@ import { PetStorage } from './services/PetStorage';
 import { ConfigService } from './services/ConfigService';
 import { getTokenMetrics } from './utils/jsonl';
 import { PET_CONFIG, generateRandomPetName } from './core/config';
+import { v4 as uuidv4 } from 'uuid';
 
 // Simple animation counter for cycling expressions
 class AnimationCounter {
@@ -89,6 +90,7 @@ class ClaudeCodeStatusLine {
     const savedState = this.storage.loadState();
     const now = new Date();
     const initialState: IPetState = savedState || {
+      uuid: uuidv4(),
       energy: PET_CONFIG.INITIAL_ENERGY,
       expression: PET_CONFIG.HAPPY_EXPRESSION,
       animalType: Pet.getRandomAnimalType(), // 随机分配动物类型给新宠物

@@ -7,6 +7,7 @@ describe('Pet Core Logic', () => {
   const mockDependencies = { config: mockConfig };
 
   const createInitialState = (): IPetState => ({
+    uuid: 'test-uuid-123',
     energy: 50,
     expression: '(o_o)',
     animalType: AnimalType.CAT, // 默认使用CAT类型进行测试

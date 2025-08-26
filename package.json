@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "20.10.5",
+    "@types/uuid": "^10.0.0",
     "@vitest/coverage-v8": "^3.2.4",
     "esbuild": "0.20.2",
     "prettier": "3.1.1",
@@ -54,5 +55,8 @@
   },
   "bugs": {
     "url": "https://github.com/terryso/ccpet/issues"
+  },
+  "dependencies": {
+    "uuid": "^11.1.0"
   }
 }

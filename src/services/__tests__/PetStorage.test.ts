@@ -17,6 +17,7 @@ describe('PetStorage Service', () => {
   const mockStateFile = '/mock/home/.claude-pet/pet-state.json';
 
   const createMockPetState = (overrides: Partial<IPetState> = {}): IPetState => ({
+    uuid: 'test-uuid-456',
     energy: 75,
     expression: '(^_^)',
     animalType: AnimalType.CAT,

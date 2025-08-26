@@ -1,5 +1,6 @@
 import { IPetState } from '../core/Pet';
 import { AnimalType, PET_CONFIG, generateRandomPetName } from '../core/config';
+import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -72,6 +73,13 @@ export class PetStorage {
         // Generate a random name for existing pets without names or with empty names
         parsed.petName = generateRandomPetName();
         console.log(`Adding petName for existing pet: ${parsed.petName}`);
+      }
+      
+      // Handle backward compatibility - add uuid if missing
+      if (parsed.uuid === undefined) {
+        // Generate a uuid for existing pets without uuid
+        parsed.uuid = uuidv4();
+        console.log(`Adding uuid for existing pet: ${parsed.uuid}`);
       }
       
       return parsed as IPetState;

@@ -118,17 +118,18 @@ ccpet config set pet.decayRate 0.0231
 # 多行显示（新功能！）
 ccpet config set display.maxLines 3                    # 显示最多3行 (1-3)
 ccpet config set display.line1.enabled true            # 启用/禁用自定义第1行
+ccpet config set display.line1.items "expression,energy-bar,energy-value" # 第1行显示内容
 ccpet config set display.line2.enabled true            # 启用/禁用第2行
 ccpet config set display.line2.items "input,output"    # 第2行显示内容
 ccpet config set display.line3.enabled true            # 启用/禁用第3行
 ccpet config set display.line3.items "total"           # 第3行显示内容
-
-# 宠物显示选项
-ccpet config set pet.showName true                     # 在状态中显示宠物名字
-ccpet config set pet.namePosition "before"             # 名字位置："before" 或 "after" 表情
 ```
 
-**可用的显示项目：** `input`, `output`, `cached`, `total`, `context-length`, `context-percentage`, `context-percentage-usable`, `cost`
+**可用的显示项目：**
+- **仅第1行**：`expression`, `energy-bar`, `energy-value`, `accumulated-tokens`, `lifetime-tokens`, `pet-name`
+- **仅第2-3行**：`input`, `output`, `cached`, `total`, `context-length`, `context-percentage`, `context-percentage-usable`, `cost`
+
+**注意**：目前，宠物相关元素只能在第1行使用，会话/上下文元素只能在第2-3行使用。
 
 ### 持续宠物监控
 
@@ -178,7 +179,7 @@ Input: 2847 Output: 1256 Cached: 512 Total: 4615
 Ctx: 2.4K Ctx: 12.0% Ctx(u): 88.5% Cost: $0.15
 ```
 
-**注意**: 宠物名字默认显示在表情前面。上下文指标 (Ctx(u)) 显示为浅绿色。成本指标显示当前会话的总USD费用。
+**注意**: 宠物名字通过在`display.line1.items`配置中包含`pet-name`元素来控制。将`pet-name`元素放在列表中你希望显示的位置。上下文指标 (Ctx(u)) 显示为浅绿色。成本指标显示当前会话的总USD费用。
 
 ### 单行显示（极简）
 配置：`ccpet config set display.maxLines 1`
@@ -197,16 +198,16 @@ Input: 2847 Output: 1256 Cached: 512 Total: 4615
 
 #### 隐藏宠物名字
 ```bash
-ccpet config set pet.showName false
+ccpet config set display.line1.items "expression,energy-bar,energy-value,accumulated-tokens,lifetime-tokens"
 ```
 ```text
-(^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
+🐶(^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
 Input: 2847 Output: 1256 Cached: 512 Total: 4615
 ```
 
 #### 名字在表情后
 ```bash
-ccpet config set pet.namePosition "after"
+ccpet config set display.line1.items "expression,pet-name,energy-bar,energy-value,accumulated-tokens,lifetime-tokens"
 ```
 ```text
 🐶(^o^) Luna ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
@@ -214,19 +215,25 @@ ccpet config set pet.namePosition "after"
 
 #### 自定义行配置
 ```bash
+ccpet config set display.line1.items "pet-name,expression,energy-value"
 ccpet config set display.line2.items "input,output"
 ccpet config set display.line3.items "total,context-percentage-usable"
 ```
 ```text
-Luna 🐶(^o^) ●●●●●●●●●● 98.52 (45.2K) 💖5.2M
+Luna 🐶(^o^) 98.52
 Input: 2847 Output: 1256
 Total: 4615 Ctx(u): 88.5%
 ```
 
 **显示格式：**
-- **第1行**（可配置）: `[名字] [动物emoji][表情] [能量条] [能量值] ([累计 token]) 💖[终身 token]`
-- **第2行**（可配置）: 你选择的自定义项目
-- **第3行**（可配置）: 你选择的自定义项目
+- **第1行**（仅宠物元素）：从`expression`, `energy-bar`, `energy-value`, `accumulated-tokens`, `lifetime-tokens`, `pet-name`中选择
+- **第2行**（仅会话/上下文元素）：从`input`, `output`, `cached`, `total`, `context-length`, `context-percentage`, `context-percentage-usable`, `cost`中选择
+- **第3行**（仅会话/上下文元素）：与第2行相同的元素
+
+**宠物名称显示：**
+- 通过在`display.line1.items`中包含`pet-name`元素来控制
+- 位置由`pet-name`在元素列表中的位置决定
+- 示例：`"pet-name,expression,energy-bar"`（名字在前），`"expression,pet-name,energy-bar"`（名字在表情后）
 
 ## 宠物照顾指南
 

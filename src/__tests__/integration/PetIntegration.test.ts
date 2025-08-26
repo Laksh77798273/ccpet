@@ -79,6 +79,7 @@ describe('Pet Integration Tests', () => {
   const mockStateFile = '/mock/home/.claude-pet/pet-state.json';
 
   const createInitialState = (): IPetState => ({
+    uuid: 'test-integration-uuid',
     energy: PET_CONFIG.INITIAL_ENERGY,
     expression: PET_CONFIG.HAPPY_EXPRESSION,
     animalType: AnimalType.CAT, // 使用默认猫类型进行测试
@@ -260,6 +261,7 @@ describe('Pet Integration Tests', () => {
 
       const storage = new PetStorage();
       const deadPetState: IPetState = {
+        uuid: 'test-dead-pet-uuid',
         energy: 0,
         expression: '(x_x)',
         animalType: AnimalType.CAT,
@@ -430,6 +432,7 @@ describe('Pet Integration Tests', () => {
 
       const storage = new PetStorage();
       const richPetHistory: IPetState = {
+        uuid: 'test-rich-pet-uuid',
         energy: 0,
         expression: '(x_x)',
         animalType: AnimalType.PANDA,

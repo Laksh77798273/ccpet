@@ -1,6 +1,8 @@
 import { PET_CONFIG, AnimalType, ANIMAL_CONFIGS, generateRandomPetName } from './config';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface IPetState {
+  uuid: string; // 宠物唯一标识符，用于supabase等数据库
   energy: number;
   expression: string;
   animalType: AnimalType; // 动物类型字段
@@ -32,9 +34,10 @@ export class Pet {
   private observers: PetObserver[] = [];
 
   constructor(initialState: IPetState, dependencies: IPetDependencies) {
-    // Initialize state with backward compatibility for missing petName
+    // Initialize state with backward compatibility for missing petName and uuid
     this.state = {
       ...initialState,
+      uuid: initialState.uuid || uuidv4(),
       petName: initialState.petName || generateRandomPetName()
     };
     this.deps = dependencies;
@@ -202,6 +205,7 @@ export class Pet {
       const newAnimalType = Pet.getRandomAnimalType();
       
       this.state = {
+        uuid: uuidv4(),
         energy: this.deps.config.INITIAL_ENERGY,
         expression: this.deps.config.STATE_EXPRESSIONS.HAPPY,
         animalType: newAnimalType,
